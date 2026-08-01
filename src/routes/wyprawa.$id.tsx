@@ -11,6 +11,7 @@ import {
   ridesQueryKey,
 } from "@/lib/rides";
 import { useSession } from "@/hooks/useAuth";
+import { RouteMap } from "@/components/RouteMap";
 
 export const Route = createFileRoute("/wyprawa/$id")({
   head: () => ({
@@ -101,6 +102,17 @@ function RideDetail() {
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
           {ride.description}
         </p>
+        <RouteMap start={ride.start} end={ride.end} className="mt-4" />
+        <a
+          href={`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(
+            ride.start,
+          )}&destination=${encodeURIComponent(ride.end)}&travelmode=driving`}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-3 inline-block text-xs font-semibold uppercase tracking-wider text-primary"
+        >
+          Otwórz w Google Maps
+        </a>
       </section>
 
       <section className="mt-4 rounded-lg border border-border bg-card p-5">
