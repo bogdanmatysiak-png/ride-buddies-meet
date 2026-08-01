@@ -81,19 +81,23 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Zakręt — wspólne wyprawy motocyklowe" },
+      { title: "Zakręt — umów się na wspólną wyprawę motocyklową" },
       {
         name: "description",
         content:
-          "Znajdź ekipę, dołącz do wyprawy motocyklowej albo ogłoś własną trasę. Zakręt łączy motocyklistów w Polsce.",
+          "Przeglądaj nadchodzące wyprawy motocyklowe, dołącz do ekipy albo ogłoś własną trasę. Beskidy, Mazury, Bieszczady i wybrzeże.",
       },
-      { property: "og:title", content: "Zakręt — wspólne wyprawy motocyklowe" },
+      { property: "og:title", content: "Zakręt — umów się na wspólną wyprawę motocyklową" },
       {
         property: "og:description",
-        content: "Znajdź ekipę i ruszaj w trasę. Wyprawy motocyklowe w całej Polsce.",
+        content: "Przeglądaj nadchodzące wyprawy motocyklowe, dołącz do ekipy albo ogłoś własną trasę. Beskidy, Mazury, Bieszczady i wybrzeże.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Zakręt — umów się na wspólną wyprawę motocyklową" },
+      { name: "twitter:description", content: "Przeglądaj nadchodzące wyprawy motocyklowe, dołącz do ekipy albo ogłoś własną trasę. Beskidy, Mazury, Bieszczady i wybrzeże." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/7189800b-7a73-4d1a-9f8f-286f9db0db17/id-preview-23a320f1--b4e20236-8294-4664-a20f-3034c8b138f6.lovable.app-1785574572872.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/7189800b-7a73-4d1a-9f8f-286f9db0db17/id-preview-23a320f1--b4e20236-8294-4664-a20f-3034c8b138f6.lovable.app-1785574572872.png" },
     ],
     links: [
       {

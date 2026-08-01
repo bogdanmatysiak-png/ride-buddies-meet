@@ -15,10 +15,10 @@ export const Route = createFileRoute("/")({
         content:
           "Przeglądaj nadchodzące wyprawy motocyklowe, dołącz do ekipy albo ogłoś własną trasę. Beskidy, Mazury, Bieszczady i wybrzeże.",
       },
-      { property: "og:title", content: "Zakręt — wspólne wyprawy motocyklowe" },
+      { property: "og:title", content: "Zakręt — umów się na wspólną wyprawę motocyklową" },
       {
         property: "og:description",
-        content: "Dołącz do ekipy motocyklistów albo ogłoś własną trasę.",
+        content: "Przeglądaj nadchodzące wyprawy motocyklowe, dołącz do ekipy albo ogłoś własną trasę. Beskidy, Mazury, Bieszczady i wybrzeże.",
       },
     ],
   }),
