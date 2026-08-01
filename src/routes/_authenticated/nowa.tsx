@@ -2,7 +2,10 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
 import { createRide, levelLabel, ridesQueryKey, type RideLevel } from "@/lib/rides";
+import { planRoute, type RoutePlan } from "@/lib/maps.functions";
+import { RouteMap } from "@/components/RouteMap";
 import { useProfile, useSession } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/_authenticated/nowa")({
@@ -30,6 +33,32 @@ function NewRide() {
   const { data: profile } = useProfile(user?.id);
   const [level, setLevel] = useState<RideLevel>("chill");
   const [busy, setBusy] = useState(false);
+  const [start, setStart] = useState("");
+  const [end, setEnd] = useState("");
+  const [km, setKm] = useState("");
+  const [plan, setPlan] = useState<RoutePlan | null>(null);
+  const [planning, setPlanning] = useState(false);
+  const computeRoute = useServerFn(planRoute);
+
+  async function handlePlanRoute() {
+    if (start.trim().length < 2 || end.trim().length < 2) {
+      toast.error("Podaj miejsce zbiórki i cel");
+      return;
+    }
+    setPlanning(true);
+    try {
+      const result = await computeRoute({ data: { start: start.trim(), end: end.trim() } });
+      setPlan(result);
+      setKm(String(result.km));
+      toast.success(
+        `Trasa wyznaczona: ${result.km} km, ok. ${Math.floor(result.minutes / 60)} h ${result.minutes % 60} min`,
+      );
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Nie udało się wyznaczyć trasy");
+    } finally {
+      setPlanning(false);
+    }
+  }
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-8">
@@ -72,15 +101,46 @@ function NewRide() {
       >
         <Field name="title" label="Nazwa wyprawy" placeholder="Serpentyny w Beskidach" />
         <div className="grid grid-cols-2 gap-3">
-          <Field name="start" label="Zbiórka" placeholder="Kraków" />
-          <Field name="end" label="Cel" placeholder="Zakopane" />
+          <Field
+            name="start"
+            label="Zbiórka"
+            placeholder="Kraków"
+            value={start}
+            onChange={setStart}
+          />
+          <Field name="end" label="Cel" placeholder="Zakopane" value={end} onChange={setEnd} />
+        </div>
+        <div className="rounded-lg border border-border bg-card p-4">
+          <button
+            type="button"
+            onClick={handlePlanRoute}
+            disabled={planning}
+            className="w-full rounded-md border border-primary px-4 py-2 text-xs font-semibold uppercase tracking-wider text-primary transition-colors hover:bg-primary hover:text-primary-foreground disabled:opacity-60"
+          >
+            {planning ? "Liczę trasę…" : "Wyznacz trasę w Google Maps"}
+          </button>
+          {plan && (
+            <>
+              <p className="mt-3 text-sm text-muted-foreground">
+                {plan.km} km · ok. {Math.floor(plan.minutes / 60)} h {plan.minutes % 60} min jazdy
+              </p>
+              <RouteMap start={plan.startAddress} end={plan.endAddress} className="mt-3" />
+            </>
+          )}
         </div>
         <div className="grid grid-cols-2 gap-3">
           <Field name="date" label="Data" type="date" />
           <Field name="time" label="Godzina" type="time" />
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <Field name="km" label="Dystans (km)" type="number" placeholder="220" />
+          <Field
+            name="km"
+            label="Dystans (km)"
+            type="number"
+            placeholder="220"
+            value={km}
+            onChange={setKm}
+          />
           <Field name="spots" label="Miejsca" type="number" placeholder="12" />
         </div>
 
@@ -140,11 +200,15 @@ function Field({
   label,
   type = "text",
   placeholder,
+  value,
+  onChange,
 }: {
   name: string;
   label: string;
   type?: string;
   placeholder?: string;
+  value?: string;
+  onChange?: (value: string) => void;
 }) {
   return (
     <div>
@@ -160,6 +224,7 @@ function Field({
         type={type}
         required
         placeholder={placeholder}
+        {...(onChange ? { value: value ?? "", onChange: (e) => onChange(e.target.value) } : {})}
         className="input-moto mt-1"
       />
     </div>
