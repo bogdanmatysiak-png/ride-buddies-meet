@@ -173,3 +173,18 @@
 @utility shadow-ember {
   box-shadow: var(--shadow-ember);
 }
+
+@utility input-moto {
+  width: 100%;
+  border-radius: var(--radius);
+  border: 1px solid var(--input);
+  background-color: var(--card);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  color: var(--foreground);
+  outline: none;
+
+  &:focus {
+    border-color: var(--primary);
+  }
+}
