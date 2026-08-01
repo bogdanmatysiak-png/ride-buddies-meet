@@ -14,7 +14,110 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          bike: string | null
+          city: string | null
+          created_at: string
+          id: string
+          nick: string
+          updated_at: string
+        }
+        Insert: {
+          bike?: string | null
+          city?: string | null
+          created_at?: string
+          id: string
+          nick: string
+          updated_at?: string
+        }
+        Update: {
+          bike?: string | null
+          city?: string | null
+          created_at?: string
+          id?: string
+          nick?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ride_participants: {
+        Row: {
+          created_at: string
+          id: string
+          ride_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ride_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ride_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ride_participants_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "rides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rides: {
+        Row: {
+          created_at: string
+          description: string
+          end_point: string
+          host_id: string | null
+          host_name: string
+          id: string
+          km: number
+          level: Database["public"]["Enums"]["ride_level"]
+          ride_date: string
+          ride_time: string
+          spots: number
+          start_point: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          end_point: string
+          host_id?: string | null
+          host_name: string
+          id?: string
+          km?: number
+          level?: Database["public"]["Enums"]["ride_level"]
+          ride_date: string
+          ride_time: string
+          spots?: number
+          start_point: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          end_point?: string
+          host_id?: string | null
+          host_name?: string
+          id?: string
+          km?: number
+          level?: Database["public"]["Enums"]["ride_level"]
+          ride_date?: string
+          ride_time?: string
+          spots?: number
+          start_point?: string
+          title?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +126,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      ride_level: "chill" | "sport" | "adventure"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +253,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      ride_level: ["chill", "sport", "adventure"],
+    },
   },
 } as const
