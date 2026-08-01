@@ -10,33 +10,53 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as NowaRouteImport } from './routes/nowa'
+import { Route as WyprawaIdRouteImport } from './routes/wyprawa.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const NowaRoute = NowaRouteImport.update({
+  id: '/nowa',
+  path: '/nowa',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WyprawaIdRoute = WyprawaIdRouteImport.update({
+  id: '/wyprawa/$id',
+  path: '/wyprawa/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/nowa': typeof NowaRoute
+  '/wyprawa/$id': typeof WyprawaIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/nowa': typeof NowaRoute
+  '/wyprawa/$id': typeof WyprawaIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/nowa': typeof NowaRoute
+  '/wyprawa/$id': typeof WyprawaIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/nowa' | '/wyprawa/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/nowa' | '/wyprawa/$id'
+  id: '__root__' | '/' | '/nowa' | '/wyprawa/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  NowaRoute: typeof NowaRoute
+  WyprawaIdRoute: typeof WyprawaIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,12 +68,38 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/nowa': {
+      id: '/nowa'
+      path: '/nowa'
+      fullPath: '/nowa'
+      preLoaderRoute: typeof NowaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/wyprawa/$id': {
+      id: '/wyprawa/$id'
+      path: '/wyprawa/$id'
+      fullPath: '/wyprawa/$id'
+      preLoaderRoute: typeof WyprawaIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  NowaRoute: NowaRoute,
+  WyprawaIdRoute: WyprawaIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
