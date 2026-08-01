@@ -126,7 +126,9 @@ export function useRides() {
     const l = () => force((n) => n + 1);
     listeners.add(l);
     l();
-    return () => listeners.delete(l);
+    return () => {
+      listeners.delete(l);
+    };
   }, []);
   return rides;
 }
