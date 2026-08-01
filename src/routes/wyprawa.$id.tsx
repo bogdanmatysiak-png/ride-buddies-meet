@@ -1,7 +1,16 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, CalendarDays, MapPin, Route as RouteIcon, Users } from "lucide-react";
 import { toast } from "sonner";
-import { formatDate, levelLabel, toggleJoin, useRides } from "@/lib/rides";
+import {
+  fetchRides,
+  formatDate,
+  joinRide,
+  leaveRide,
+  levelLabel,
+  ridesQueryKey,
+} from "@/lib/rides";
+import { useSession } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/wyprawa/$id")({
   head: () => ({
@@ -23,10 +32,23 @@ export const Route = createFileRoute("/wyprawa/$id")({
 
 function RideDetail() {
   const { id } = Route.useParams();
-  const rides = useRides();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { user } = useSession();
+  const { data: rides = [], isLoading } = useQuery({
+    queryKey: ridesQueryKey,
+    queryFn: fetchRides,
+  });
   const ride = rides.find((r) => r.id === id);
 
   if (!ride) {
+    if (isLoading) {
+      return (
+        <main className="mx-auto max-w-3xl px-4 py-16 text-center text-sm text-muted-foreground">
+          Ładujemy wyprawę…
+        </main>
+      );
+    }
     return (
       <main className="mx-auto max-w-3xl px-4 py-16 text-center">
         <h1 className="text-3xl text-foreground">Nie ma takiej wyprawy</h1>
@@ -38,6 +60,7 @@ function RideDetail() {
   }
 
   const free = ride.spots - ride.riders.length;
+  const joined = !!user && ride.riderIds.includes(user.id);
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-6">
@@ -95,20 +118,38 @@ function RideDetail() {
       </section>
 
       <button
-        onClick={() => {
-          toggleJoin(ride.id);
-          toast.success(
-            ride.joined ? "Wypisano z wyprawy" : "Jesteś zapisany. Do zobaczenia na zbiórce!",
-          );
+        onClick={async () => {
+          if (!user) {
+            navigate({ to: "/auth", search: { redirect: `/wyprawa/${ride.id}` } });
+            return;
+          }
+          try {
+            if (joined) {
+              await leaveRide(ride.id, user.id);
+              toast.success("Wypisano z wyprawy");
+            } else {
+              await joinRide(ride.id, user.id);
+              toast.success("Jesteś zapisany. Do zobaczenia na zbiórce!");
+            }
+            await queryClient.invalidateQueries({ queryKey: ridesQueryKey });
+          } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Nie udało się zapisać");
+          }
         }}
-        disabled={!ride.joined && free <= 0}
+        disabled={!!user && !joined && free <= 0}
         className={`mt-6 w-full rounded-md px-5 py-3 text-sm font-semibold transition-opacity disabled:opacity-50 ${
-          ride.joined
+          joined
             ? "border border-border bg-card text-foreground"
             : "bg-primary text-primary-foreground shadow-ember hover:opacity-90"
         }`}
       >
-        {ride.joined ? "Wypisz mnie" : free > 0 ? "Dołączam do ekipy" : "Brak miejsc"}
+        {!user
+          ? "Zaloguj się, aby dołączyć"
+          : joined
+            ? "Wypisz mnie"
+            : free > 0
+              ? "Dołączam do ekipy"
+              : "Brak miejsc"}
       </button>
     </main>
   );

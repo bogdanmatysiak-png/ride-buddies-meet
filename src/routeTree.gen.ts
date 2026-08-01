@@ -10,7 +10,10 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as NowaRouteImport } from './routes/nowa'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedNowaRouteImport } from './routes/_authenticated/nowa'
+import { Route as AuthenticatedProfilRouteImport } from './routes/_authenticated/profil'
 import { Route as WyprawaIdRouteImport } from './routes/wyprawa.$id'
 
 const IndexRoute = IndexRouteImport.update({
@@ -18,10 +21,24 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const NowaRoute = NowaRouteImport.update({
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedNowaRoute = AuthenticatedNowaRouteImport.update({
   id: '/nowa',
   path: '/nowa',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedProfilRoute = AuthenticatedProfilRouteImport.update({
+  id: '/profil',
+  path: '/profil',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const WyprawaIdRoute = WyprawaIdRouteImport.update({
   id: '/wyprawa/$id',
@@ -31,31 +48,46 @@ const WyprawaIdRoute = WyprawaIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/nowa': typeof NowaRoute
+  '/auth': typeof AuthRoute
+  '/nowa': typeof AuthenticatedNowaRoute
+  '/profil': typeof AuthenticatedProfilRoute
   '/wyprawa/$id': typeof WyprawaIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/nowa': typeof NowaRoute
+  '/auth': typeof AuthRoute
+  '/nowa': typeof AuthenticatedNowaRoute
+  '/profil': typeof AuthenticatedProfilRoute
   '/wyprawa/$id': typeof WyprawaIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/nowa': typeof NowaRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/auth': typeof AuthRoute
+  '/_authenticated/nowa': typeof AuthenticatedNowaRoute
+  '/_authenticated/profil': typeof AuthenticatedProfilRoute
   '/wyprawa/$id': typeof WyprawaIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/nowa' | '/wyprawa/$id'
+  fullPaths: '/' | '/auth' | '/nowa' | '/profil' | '/wyprawa/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/nowa' | '/wyprawa/$id'
-  id: '__root__' | '/' | '/nowa' | '/wyprawa/$id'
+  to: '/' | '/auth' | '/nowa' | '/profil' | '/wyprawa/$id'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/auth'
+    | '/_authenticated/nowa'
+    | '/_authenticated/profil'
+    | '/wyprawa/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  NowaRoute: typeof NowaRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AuthRoute: typeof AuthRoute
   WyprawaIdRoute: typeof WyprawaIdRoute
 }
 
@@ -68,12 +100,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/nowa': {
-      id: '/nowa'
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/nowa': {
+      id: '/_authenticated/nowa'
       path: '/nowa'
       fullPath: '/nowa'
-      preLoaderRoute: typeof NowaRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedNowaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/profil': {
+      id: '/_authenticated/profil'
+      path: '/profil'
+      fullPath: '/profil'
+      preLoaderRoute: typeof AuthenticatedProfilRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/wyprawa/$id': {
       id: '/wyprawa/$id'
@@ -85,9 +138,23 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedNowaRoute: typeof AuthenticatedNowaRoute
+  AuthenticatedProfilRoute: typeof AuthenticatedProfilRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedNowaRoute: AuthenticatedNowaRoute,
+  AuthenticatedProfilRoute: AuthenticatedProfilRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  NowaRoute: NowaRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AuthRoute: AuthRoute,
   WyprawaIdRoute: WyprawaIdRoute,
 }
 export const routeTree = rootRouteImport

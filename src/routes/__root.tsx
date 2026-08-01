@@ -1,9 +1,10 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import {
   Outlet,
   Link,
   createRootRouteWithContext,
   useRouter,
+  useNavigate,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -12,6 +13,8 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useSession } from "@/hooks/useAuth";
 
 function NotFoundComponent() {
   return (
@@ -128,6 +131,16 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const router = useRouter();
+
+  useEffect(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
+      router.invalidate();
+      if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
+    });
+    return () => sub.subscription.unsubscribe();
+  }, [router, queryClient]);
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -140,12 +153,7 @@ function RootComponent() {
                 ZAKRĘT
               </span>
             </Link>
-            <Link
-              to="/nowa"
-              className="rounded-md bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
-            >
-              Ogłoś wyprawę
-            </Link>
+            <AuthNav />
           </div>
         </header>
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
@@ -156,5 +164,52 @@ function RootComponent() {
       </div>
       <Toaster />
     </QueryClientProvider>
+  );
+}
+
+function AuthNav() {
+  const { session, loading } = useSession();
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+
+  if (loading) return <span className="h-8 w-24" />;
+
+  if (!session) {
+    return (
+      <Link
+        to="/auth"
+        className="rounded-md bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+      >
+        Zaloguj się
+      </Link>
+    );
+  }
+
+  return (
+    <nav className="flex items-center gap-2">
+      <Link
+        to="/nowa"
+        className="rounded-md bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+      >
+        Ogłoś wyprawę
+      </Link>
+      <Link
+        to="/profil"
+        className="rounded-md border border-border px-3 py-1.5 text-sm font-semibold text-foreground transition-colors hover:border-primary/60"
+      >
+        Profil
+      </Link>
+      <button
+        onClick={async () => {
+          await queryClient.cancelQueries();
+          queryClient.clear();
+          await supabase.auth.signOut();
+          navigate({ to: "/auth", replace: true });
+        }}
+        className="text-xs uppercase tracking-wider text-muted-foreground hover:text-primary"
+      >
+        Wyloguj
+      </button>
+    </nav>
   );
 }

@@ -2,8 +2,15 @@ import { Link } from "@tanstack/react-router";
 import { MapPin, Users, Route as RouteIcon } from "lucide-react";
 import { formatDate, levelLabel, type Ride } from "@/lib/rides";
 
-export function RideCard({ ride }: { ride: Ride }) {
+export function RideCard({
+  ride,
+  currentUserId,
+}: {
+  ride: Ride;
+  currentUserId?: string | null;
+}) {
   const free = ride.spots - ride.riders.length;
+  const joined = !!currentUserId && ride.riderIds.includes(currentUserId);
   return (
     <Link
       to="/wyprawa/$id"
@@ -35,7 +42,7 @@ export function RideCard({ ride }: { ride: Ride }) {
       </div>
       <p className="mt-3 text-xs uppercase tracking-wider text-muted-foreground">
         Prowadzi {ride.host} ·{" "}
-        {ride.joined ? (
+        {joined ? (
           <span className="text-primary">jesteś zapisany</span>
         ) : free > 0 ? (
           `wolne miejsca: ${free}`

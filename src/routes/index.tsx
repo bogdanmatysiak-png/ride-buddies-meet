@@ -1,8 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import heroImage from "@/assets/hero-ride.jpg";
 import { RideCard } from "@/components/RideCard";
-import { levelLabel, useRides, type RideLevel } from "@/lib/rides";
+import { fetchRides, levelLabel, ridesQueryKey, type RideLevel } from "@/lib/rides";
+import { useSession } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -31,7 +33,11 @@ const filters: Array<{ key: RideLevel | "all"; label: string }> = [
 ];
 
 function Index() {
-  const rides = useRides();
+  const { data: rides = [], isLoading } = useQuery({
+    queryKey: ridesQueryKey,
+    queryFn: fetchRides,
+  });
+  const { user } = useSession();
   const [filter, setFilter] = useState<RideLevel | "all">("all");
   const visible = [...rides]
     .filter((r) => filter === "all" || r.level === filter)
@@ -102,9 +108,14 @@ function Index() {
         </div>
         <div className="mt-5 space-y-3">
           {visible.map((ride) => (
-            <RideCard key={ride.id} ride={ride} />
+            <RideCard key={ride.id} ride={ride} currentUserId={user?.id ?? null} />
           ))}
-          {visible.length === 0 && (
+          {isLoading && (
+            <p className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+              Ładujemy trasy…
+            </p>
+          )}
+          {!isLoading && visible.length === 0 && (
             <p className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
               Brak wypraw w tej kategorii. Może ogłosisz swoją?
             </p>

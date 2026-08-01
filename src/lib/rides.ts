@@ -1,21 +1,22 @@
-import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 export type RideLevel = "chill" | "sport" | "adventure";
 
 export type Ride = {
   id: string;
+  hostId: string | null;
+  host: string;
   title: string;
   start: string;
   end: string;
-  date: string; // ISO date
+  date: string;
   time: string;
   km: number;
   level: RideLevel;
   spots: number;
-  host: string;
   description: string;
+  riderIds: string[];
   riders: string[];
-  joined: boolean;
 };
 
 export const levelLabel: Record<RideLevel, string> = {
@@ -24,135 +25,94 @@ export const levelLabel: Record<RideLevel, string> = {
   adventure: "Adventure",
 };
 
-const seed: Ride[] = [
-  {
-    id: "beskidy-serpentyny",
-    title: "Beskidzkie serpentyny",
-    start: "Kraków",
-    end: "Przełęcz Salmopolska",
-    date: "2026-08-08",
-    time: "07:30",
-    km: 240,
-    level: "sport",
-    spots: 12,
-    host: "Marek „Kruk”",
-    description:
-      "Wczesny start, tankowanie w Wadowicach, potem same zakręty. Tempo żywe, ale nikogo nie gubimy — zbiórka po każdym odcinku.",
-    riders: ["Marek", "Ola", "Bartek", "Kamil", "Zosia"],
-    joined: false,
-  },
-  {
-    id: "mazury-wieczorem",
-    title: "Mazury na miękko",
-    start: "Olsztyn",
-    end: "Mikołajki",
-    date: "2026-08-15",
-    time: "10:00",
-    km: 160,
-    level: "chill",
-    spots: 20,
-    host: "Ania",
-    description:
-      "Luźna trasa dla każdego, dużo postojów na kawę i zdjęcia nad wodą. Idealne na pierwszą wspólną wyprawę.",
-    riders: ["Ania", "Piotr", "Ewa"],
-    joined: true,
-  },
-  {
-    id: "bieszczady-szuter",
-    title: "Bieszczady: szuter i mgła",
-    start: "Sanok",
-    end: "Wetlina",
-    date: "2026-08-22",
-    time: "06:45",
-    km: 310,
-    level: "adventure",
-    spots: 8,
-    host: "Tomek",
-    description:
-      "Mieszanka asfaltu i szutrów, opony dual-sport obowiązkowe. Nocleg w bazie, powrót w niedzielę.",
-    riders: ["Tomek", "Rafał", "Iga", "Wojtek"],
-    joined: false,
-  },
-  {
-    id: "wybrzeze-o-swicie",
-    title: "Wybrzeże o świcie",
-    start: "Gdańsk",
-    end: "Łeba",
-    date: "2026-09-05",
-    time: "05:30",
-    km: 200,
-    level: "chill",
-    spots: 15,
-    host: "Kasia",
-    description:
-      "Wyjazd przed wschodem słońca, śniadanie na plaży, powrót lasami. Kaski otwarte, tempo turystyczne.",
-    riders: ["Kasia", "Michał"],
-    joined: false,
-  },
-];
+export const ridesQueryKey = ["rides"] as const;
 
-const KEY = "moto-wyprawy-v1";
-let rides: Ride[] = seed;
-let hydrated = false;
-const listeners = new Set<() => void>();
+export async function fetchRides(): Promise<Ride[]> {
+  const [{ data: rides, error }, { data: profiles }] = await Promise.all([
+    supabase
+      .from("rides")
+      .select("*, ride_participants(user_id)")
+      .order("ride_date", { ascending: true }),
+    supabase.from("profiles").select("id, nick"),
+  ]);
+  if (error) throw error;
 
-function hydrate() {
-  if (hydrated || typeof window === "undefined") return;
-  hydrated = true;
-  try {
-    const raw = window.localStorage.getItem(KEY);
-    if (raw) rides = JSON.parse(raw) as Ride[];
-  } catch {
-    /* ignore */
-  }
-}
+  const nickById = new Map((profiles ?? []).map((p) => [p.id, p.nick]));
 
-function commit(next: Ride[]) {
-  rides = next;
-  if (typeof window !== "undefined") {
-    try {
-      window.localStorage.setItem(KEY, JSON.stringify(rides));
-    } catch {
-      /* ignore */
-    }
-  }
-  listeners.forEach((l) => l());
-}
-
-export function useRides() {
-  const [, force] = useState(0);
-  useEffect(() => {
-    hydrate();
-    const l = () => force((n) => n + 1);
-    listeners.add(l);
-    l();
-    return () => {
-      listeners.delete(l);
+  return (rides ?? []).map((r) => {
+    const riderIds = (r.ride_participants ?? []).map((p) => p.user_id);
+    return {
+      id: r.id,
+      hostId: r.host_id,
+      host: r.host_name,
+      title: r.title,
+      start: r.start_point,
+      end: r.end_point,
+      date: r.ride_date,
+      time: r.ride_time,
+      km: r.km,
+      level: r.level,
+      spots: r.spots,
+      description: r.description,
+      riderIds,
+      riders: riderIds.map((id) => nickById.get(id) ?? "Motocyklista"),
     };
-  }, []);
-  return rides;
+  });
 }
 
-export function toggleJoin(id: string) {
-  commit(
-    rides.map((r) =>
-      r.id === id
-        ? {
-            ...r,
-            joined: !r.joined,
-            riders: r.joined
-              ? r.riders.filter((n) => n !== "Ty")
-              : [...r.riders, "Ty"],
-          }
-        : r,
-    ),
-  );
+export async function joinRide(rideId: string, userId: string) {
+  const { error } = await supabase
+    .from("ride_participants")
+    .insert({ ride_id: rideId, user_id: userId });
+  if (error) throw error;
 }
 
-export function addRide(input: Omit<Ride, "id" | "riders" | "joined">) {
-  const id = `${input.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${Date.now().toString(36)}`;
-  commit([...rides, { ...input, id, riders: [input.host], joined: true }]);
-  return id;
+export async function leaveRide(rideId: string, userId: string) {
+  const { error } = await supabase
+    .from("ride_participants")
+    .delete()
+    .eq("ride_id", rideId)
+    .eq("user_id", userId);
+  if (error) throw error;
+}
+
+export type NewRideInput = {
+  title: string;
+  start: string;
+  end: string;
+  date: string;
+  time: string;
+  km: number;
+  spots: number;
+  level: RideLevel;
+  description: string;
+};
+
+export async function createRide(
+  input: NewRideInput,
+  host: { id: string; nick: string },
+): Promise<string> {
+  const { data, error } = await supabase
+    .from("rides")
+    .insert({
+      host_id: host.id,
+      host_name: host.nick,
+      title: input.title,
+      start_point: input.start,
+      end_point: input.end,
+      ride_date: input.date,
+      ride_time: input.time,
+      km: input.km,
+      spots: input.spots,
+      level: input.level,
+      description: input.description,
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+  // Autor od razu jedzie na własnej wyprawie.
+  await joinRide(data.id, host.id);
+  return data.id;
 }
 
 export function formatDate(iso: string) {
