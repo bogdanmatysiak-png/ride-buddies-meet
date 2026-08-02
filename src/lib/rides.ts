@@ -146,12 +146,3 @@ export async function deleteRide(rideId: string) {
   const { error } = await supabase.from("rides").delete().eq("id", rideId);
   if (error) throw error;
 }
-
-function unusedFormatDate(iso: string) {
-  const d = new Date(iso + "T00:00:00");
-  return d.toLocaleDateString("pl-PL", {
-    weekday: "short",
-    day: "numeric",
-    month: "long",
-  });
-}
