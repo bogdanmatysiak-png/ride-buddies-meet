@@ -10,12 +10,12 @@ import { RideCard } from "@/components/RideCard";
 export const Route = createFileRoute("/_authenticated/profil")({
   head: () => ({
     meta: [
-      { title: "Mój profil motocyklisty — Zakręt" },
+      { title: "Mój profil motocyklisty — Motor Trip" },
       {
         name: "description",
         content: "Ustaw nick, motocykl i miasto oraz sprawdź wyprawy, na które jesteś zapisany.",
       },
-      { property: "og:title", content: "Mój profil motocyklisty — Zakręt" },
+      { property: "og:title", content: "Mój profil motocyklisty — Motor Trip" },
       { property: "og:description", content: "Twój nick, motocykl i zapisane wyprawy." },
     ],
   }),

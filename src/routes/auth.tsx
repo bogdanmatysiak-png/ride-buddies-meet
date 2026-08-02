@@ -13,13 +13,13 @@ export const Route = createFileRoute("/auth")({
   }),
   head: () => ({
     meta: [
-      { title: "Zaloguj się — Zakręt" },
+      { title: "Zaloguj się — Motor Trip" },
       {
         name: "description",
         content:
           "Zaloguj się lub utwórz konto, aby zapisywać się na wyprawy motocyklowe i ogłaszać własne trasy.",
       },
-      { property: "og:title", content: "Zaloguj się — Zakręt" },
+      { property: "og:title", content: "Zaloguj się — Motor Trip" },
       {
         property: "og:description",
         content: "Konto pozwala zapisywać się na wyprawy i ogłaszać własne trasy.",

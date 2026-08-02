@@ -9,13 +9,13 @@ import { useSession } from "@/hooks/useAuth";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Zakręt — umów się na wspólną wyprawę motocyklową" },
+      { title: "Motor Trip — umów się na wspólną wyprawę motocyklową" },
       {
         name: "description",
         content:
           "Przeglądaj nadchodzące wyprawy motocyklowe, dołącz do ekipy albo ogłoś własną trasę. Beskidy, Mazury, Bieszczady i wybrzeże.",
       },
-      { property: "og:title", content: "Zakręt — umów się na wspólną wyprawę motocyklową" },
+      { property: "og:title", content: "Motor Trip — umów się na wspólną wyprawę motocyklową" },
       {
         property: "og:description",
         content: "Przeglądaj nadchodzące wyprawy motocyklowe, dołącz do ekipy albo ogłoś własną trasę. Beskidy, Mazury, Bieszczady i wybrzeże.",
@@ -64,7 +64,7 @@ function Index() {
             Znajdź ekipę na weekend.
           </h1>
           <p className="mt-4 max-w-md text-sm text-muted-foreground">
-            Zakręt to miejsce, w którym motocykliści umawiają się na wspólne trasy — od
+            Motor Trip to miejsce, w którym motocykliści umawiają się na wspólne trasy — od
             spokojnych przejażdżek po szuter w Bieszczadach.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
