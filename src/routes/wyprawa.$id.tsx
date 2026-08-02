@@ -12,6 +12,7 @@ import {
 } from "@/lib/rides";
 import { useSession } from "@/hooks/useAuth";
 import { RouteMap } from "@/components/RouteMap";
+import { RideChat } from "@/components/RideChat";
 
 export const Route = createFileRoute("/wyprawa/$id")({
   head: () => ({
@@ -131,6 +132,10 @@ function RideDetail() {
 
       <button
         onClick={async () => {
+          if (!user) {
+            navigate({ to: "/auth", search: { redirect: `/wyprawa/${ride.id}` } });
+            return;
+          }
           if (!user) {
             navigate({ to: "/auth", search: { redirect: `/wyprawa/${ride.id}` } });
             return;
