@@ -130,12 +130,10 @@ function RideDetail() {
         </ul>
       </section>
 
+      <RideChat rideId={ride.id} currentUserId={user?.id} hostId={ride.hostId} />
+
       <button
         onClick={async () => {
-          if (!user) {
-            navigate({ to: "/auth", search: { redirect: `/wyprawa/${ride.id}` } });
-            return;
-          }
           if (!user) {
             navigate({ to: "/auth", search: { redirect: `/wyprawa/${ride.id}` } });
             return;
