@@ -61,7 +61,7 @@ function Index() {
           <h1 className="mt-3 text-5xl text-foreground sm:text-6xl">
             Nie jedź sam.
             <br />
-            Znajdź ekipę na weekend.
+            Znajdź ekipę na wyprawę.
           </h1>
           <p className="mt-4 max-w-md text-sm text-muted-foreground">
             Motor Trip to miejsce, w którym motocykliści umawiają się na wspólne trasy — od
