@@ -18,8 +18,8 @@ export function RideChat({
   hostId,
 }: {
   rideId: string;
-  currentUserId?: string | null;
-  hostId?: string | null;
+  currentUserId?: string | null | undefined;
+  hostId?: string | null | undefined;
 }) {
   const queryClient = useQueryClient();
   const [text, setText] = useState("");
