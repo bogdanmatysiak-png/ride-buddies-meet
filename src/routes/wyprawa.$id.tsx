@@ -12,6 +12,7 @@ import {
 } from "@/lib/rides";
 import { useSession } from "@/hooks/useAuth";
 import { RouteMap } from "@/components/RouteMap";
+import { RideChat } from "@/components/RideChat";
 
 export const Route = createFileRoute("/wyprawa/$id")({
   head: () => ({
@@ -128,6 +129,8 @@ function RideDetail() {
           ))}
         </ul>
       </section>
+
+      <RideChat rideId={ride.id} currentUserId={user?.id} hostId={ride.hostId} />
 
       <button
         onClick={async () => {
