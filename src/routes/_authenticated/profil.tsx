@@ -104,7 +104,18 @@ function ProfilePage() {
       <h2 className="mt-10 text-3xl text-foreground">Twoje wyprawy</h2>
       <div className="mt-4 space-y-3">
         {mine.map((ride) => (
-          <RideCard key={ride.id} ride={ride} currentUserId={user?.id ?? null} />
+          <div key={ride.id}>
+            <RideCard ride={ride} currentUserId={user?.id ?? null} />
+            {user && ride.hostId === user.id && (
+              <Link
+                to="/edytuj/$id"
+                params={{ id: ride.id }}
+                className="mt-2 inline-flex rounded-md border border-primary px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
+              >
+                Edytuj trasę
+              </Link>
+            )}
+          </div>
         ))}
         {mine.length === 0 && (
           <p className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">

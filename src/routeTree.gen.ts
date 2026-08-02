@@ -15,6 +15,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedNowaRouteImport } from './routes/_authenticated/nowa'
 import { Route as AuthenticatedProfilRouteImport } from './routes/_authenticated/profil'
 import { Route as WyprawaIdRouteImport } from './routes/wyprawa.$id'
+import { Route as AuthenticatedEdytujIdRouteImport } from './routes/_authenticated/edytuj.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -45,6 +46,11 @@ const WyprawaIdRoute = WyprawaIdRouteImport.update({
   path: '/wyprawa/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedEdytujIdRoute = AuthenticatedEdytujIdRouteImport.update({
+  id: '/edytuj/$id',
+  path: '/edytuj/$id',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -52,6 +58,7 @@ export interface FileRoutesByFullPath {
   '/nowa': typeof AuthenticatedNowaRoute
   '/profil': typeof AuthenticatedProfilRoute
   '/wyprawa/$id': typeof WyprawaIdRoute
+  '/edytuj/$id': typeof AuthenticatedEdytujIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -59,6 +66,7 @@ export interface FileRoutesByTo {
   '/nowa': typeof AuthenticatedNowaRoute
   '/profil': typeof AuthenticatedProfilRoute
   '/wyprawa/$id': typeof WyprawaIdRoute
+  '/edytuj/$id': typeof AuthenticatedEdytujIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -68,12 +76,14 @@ export interface FileRoutesById {
   '/_authenticated/nowa': typeof AuthenticatedNowaRoute
   '/_authenticated/profil': typeof AuthenticatedProfilRoute
   '/wyprawa/$id': typeof WyprawaIdRoute
+  '/_authenticated/edytuj/$id': typeof AuthenticatedEdytujIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/nowa' | '/profil' | '/wyprawa/$id'
+  fullPaths:
+    '/' | '/auth' | '/nowa' | '/profil' | '/wyprawa/$id' | '/edytuj/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/nowa' | '/profil' | '/wyprawa/$id'
+  to: '/' | '/auth' | '/nowa' | '/profil' | '/wyprawa/$id' | '/edytuj/$id'
   id:
     | '__root__'
     | '/'
@@ -82,6 +92,7 @@ export interface FileRouteTypes {
     | '/_authenticated/nowa'
     | '/_authenticated/profil'
     | '/wyprawa/$id'
+    | '/_authenticated/edytuj/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -135,17 +146,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WyprawaIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/edytuj/$id': {
+      id: '/_authenticated/edytuj/$id'
+      path: '/edytuj/$id'
+      fullPath: '/edytuj/$id'
+      preLoaderRoute: typeof AuthenticatedEdytujIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedNowaRoute: typeof AuthenticatedNowaRoute
   AuthenticatedProfilRoute: typeof AuthenticatedProfilRoute
+  AuthenticatedEdytujIdRoute: typeof AuthenticatedEdytujIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedNowaRoute: AuthenticatedNowaRoute,
   AuthenticatedProfilRoute: AuthenticatedProfilRoute,
+  AuthenticatedEdytujIdRoute: AuthenticatedEdytujIdRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

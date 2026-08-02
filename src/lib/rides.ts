@@ -123,3 +123,26 @@ export function formatDate(iso: string) {
     month: "long",
   });
 }
+
+export async function updateRide(rideId: string, input: NewRideInput) {
+  const { error } = await supabase
+    .from("rides")
+    .update({
+      title: input.title,
+      start_point: input.start,
+      end_point: input.end,
+      ride_date: input.date,
+      ride_time: input.time,
+      km: input.km,
+      spots: input.spots,
+      level: input.level,
+      description: input.description,
+    })
+    .eq("id", rideId);
+  if (error) throw error;
+}
+
+export async function deleteRide(rideId: string) {
+  const { error } = await supabase.from("rides").delete().eq("id", rideId);
+  if (error) throw error;
+}
