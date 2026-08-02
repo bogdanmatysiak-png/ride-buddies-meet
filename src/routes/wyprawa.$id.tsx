@@ -17,12 +17,12 @@ import { RideChat } from "@/components/RideChat";
 export const Route = createFileRoute("/wyprawa/$id")({
   head: () => ({
     meta: [
-      { title: "Szczegóły wyprawy — Zakręt" },
+      { title: "Szczegóły wyprawy — Motor Trip" },
       {
         name: "description",
         content: "Trasa, tempo, zbiórka i lista uczestników wspólnej wyprawy motocyklowej.",
       },
-      { property: "og:title", content: "Szczegóły wyprawy — Zakręt" },
+      { property: "og:title", content: "Szczegóły wyprawy — Motor Trip" },
       {
         property: "og:description",
         content: "Sprawdź trasę i dołącz do ekipy motocyklistów.",

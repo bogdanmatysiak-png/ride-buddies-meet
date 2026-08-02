@@ -11,13 +11,13 @@ import { useProfile, useSession } from "@/hooks/useAuth";
 export const Route = createFileRoute("/_authenticated/nowa")({
   head: () => ({
     meta: [
-      { title: "Ogłoś wyprawę motocyklową — Zakręt" },
+      { title: "Ogłoś wyprawę motocyklową — Motor Trip" },
       {
         name: "description",
         content:
           "Dodaj własną trasę: data, zbiórka, dystans i liczba miejsc. Zbierz ekipę na najbliższy weekend.",
       },
-      { property: "og:title", content: "Ogłoś wyprawę motocyklową — Zakręt" },
+      { property: "og:title", content: "Ogłoś wyprawę motocyklową — Motor Trip" },
       { property: "og:description", content: "Dodaj trasę i zbierz ekipę na weekend." },
     ],
   }),
