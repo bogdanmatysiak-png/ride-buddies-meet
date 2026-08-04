@@ -43,3 +43,19 @@ export function useProfile(userId: string | undefined) {
     },
   });
 }
+
+export function useIsAdmin(userId: string | undefined) {
+  const { data } = useQuery({
+    queryKey: ["is-admin", userId],
+    enabled: !!userId,
+    queryFn: async (): Promise<boolean> => {
+      const { data, error } = await supabase.rpc("has_role", {
+        _user_id: userId!,
+        _role: "admin",
+      });
+      if (error) return false;
+      return !!data;
+    },
+  });
+  return !!data;
+}
