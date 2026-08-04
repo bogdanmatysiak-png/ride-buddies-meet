@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useProfile, useSession } from "@/hooks/useAuth";
+import { useIsAdmin, useProfile, useSession } from "@/hooks/useAuth";
 import { fetchRides, ridesQueryKey } from "@/lib/rides";
 import { RideCard } from "@/components/RideCard";
 
@@ -27,6 +27,7 @@ function ProfilePage() {
   const queryClient = useQueryClient();
   const { data: profile, isLoading } = useProfile(user?.id);
   const { data: rides = [] } = useQuery({ queryKey: ridesQueryKey, queryFn: fetchRides });
+  const isAdmin = useIsAdmin(user?.id);
 
   const [nick, setNick] = useState("");
   const [bike, setBike] = useState("");
@@ -66,6 +67,11 @@ function ProfilePage() {
     <main className="mx-auto max-w-3xl px-4 py-8">
       <h1 className="text-4xl text-foreground">Twój profil</h1>
       <p className="mt-2 text-sm text-muted-foreground">{user?.email}</p>
+      {isAdmin && (
+        <p className="mt-2 inline-block rounded-sm bg-primary px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-primary-foreground">
+          Administrator
+        </p>
+      )}
 
       <form onSubmit={save} className="mt-6 space-y-4 rounded-lg border border-border bg-card p-5">
         <Labeled label="Nick">
@@ -106,7 +112,7 @@ function ProfilePage() {
         {mine.map((ride) => (
           <div key={ride.id}>
             <RideCard ride={ride} currentUserId={user?.id ?? null} />
-            {user && ride.hostId === user.id && (
+            {user && (ride.hostId === user.id || isAdmin) && (
               <Link
                 to="/edytuj/$id"
                 params={{ id: ride.id }}
