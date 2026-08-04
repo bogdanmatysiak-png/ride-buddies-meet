@@ -180,17 +180,31 @@ function AuthNav() {
 
   if (!session) {
     return (
-      <Link
-        to="/auth"
-        className="rounded-md bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
-      >
-        Zaloguj się
-      </Link>
+      <nav className="flex items-center gap-2">
+        <Link
+          to="/ranking"
+          className="text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-primary"
+        >
+          Ranking
+        </Link>
+        <Link
+          to="/auth"
+          className="rounded-md bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+        >
+          Zaloguj się
+        </Link>
+      </nav>
     );
   }
 
   return (
     <nav className="flex items-center gap-2">
+      <Link
+        to="/ranking"
+        className="text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-primary"
+      >
+        Ranking
+      </Link>
       <Link
         to="/nowa"
         className="rounded-md bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"

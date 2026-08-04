@@ -16,10 +16,12 @@ export function RideChat({
   rideId,
   currentUserId,
   hostId,
+  isAdmin,
 }: {
   rideId: string;
   currentUserId?: string | null | undefined;
   hostId?: string | null | undefined;
+  isAdmin?: boolean;
 }) {
   const queryClient = useQueryClient();
   const [text, setText] = useState("");
@@ -93,7 +95,8 @@ export function RideChat({
         ) : (
           messages.map((m) => {
             const mine = m.userId === currentUserId;
-            const canDelete = mine || (!!currentUserId && currentUserId === hostId);
+            const canDelete =
+              mine || !!isAdmin || (!!currentUserId && currentUserId === hostId);
             return (
               <div
                 key={m.id}
