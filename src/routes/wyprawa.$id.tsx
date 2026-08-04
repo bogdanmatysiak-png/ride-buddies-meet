@@ -10,9 +10,10 @@ import {
   levelLabel,
   ridesQueryKey,
 } from "@/lib/rides";
-import { useSession } from "@/hooks/useAuth";
+import { useIsAdmin, useSession } from "@/hooks/useAuth";
 import { RouteMap } from "@/components/RouteMap";
 import { RideChat } from "@/components/RideChat";
+import { RideRatings } from "@/components/RideRatings";
 
 export const Route = createFileRoute("/wyprawa/$id")({
   head: () => ({
@@ -37,6 +38,7 @@ function RideDetail() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useSession();
+  const isAdmin = useIsAdmin(user?.id);
   const { data: rides = [], isLoading } = useQuery({
     queryKey: ridesQueryKey,
     queryFn: fetchRides,
@@ -130,7 +132,30 @@ function RideDetail() {
         </ul>
       </section>
 
-      <RideChat rideId={ride.id} currentUserId={user?.id} hostId={ride.hostId} />
+      <RideRatings
+        rideId={ride.id}
+        hostName={ride.host}
+        hostId={ride.hostId}
+        currentUserId={user?.id}
+        isAdmin={isAdmin}
+      />
+
+      <RideChat
+        rideId={ride.id}
+        currentUserId={user?.id}
+        hostId={ride.hostId}
+        isAdmin={isAdmin}
+      />
+
+      {isAdmin && (
+        <Link
+          to="/edytuj/$id"
+          params={{ id: ride.id }}
+          className="mt-4 inline-flex rounded-md border border-primary px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
+        >
+          Administrator: edytuj wyprawę
+        </Link>
+      )}
 
       <button
         onClick={async () => {

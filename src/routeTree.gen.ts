@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as RankingRouteImport } from './routes/ranking'
 import { Route as AuthenticatedNowaRouteImport } from './routes/_authenticated/nowa'
 import { Route as AuthenticatedProfilRouteImport } from './routes/_authenticated/profil'
 import { Route as WyprawaIdRouteImport } from './routes/wyprawa.$id'
@@ -29,6 +30,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RankingRoute = RankingRouteImport.update({
+  id: '/ranking',
+  path: '/ranking',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedNowaRoute = AuthenticatedNowaRouteImport.update({
@@ -55,6 +61,7 @@ const AuthenticatedEdytujIdRoute = AuthenticatedEdytujIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/ranking': typeof RankingRoute
   '/nowa': typeof AuthenticatedNowaRoute
   '/profil': typeof AuthenticatedProfilRoute
   '/wyprawa/$id': typeof WyprawaIdRoute
@@ -63,6 +70,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/ranking': typeof RankingRoute
   '/nowa': typeof AuthenticatedNowaRoute
   '/profil': typeof AuthenticatedProfilRoute
   '/wyprawa/$id': typeof WyprawaIdRoute
@@ -73,6 +81,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/ranking': typeof RankingRoute
   '/_authenticated/nowa': typeof AuthenticatedNowaRoute
   '/_authenticated/profil': typeof AuthenticatedProfilRoute
   '/wyprawa/$id': typeof WyprawaIdRoute
@@ -81,14 +90,28 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/auth' | '/nowa' | '/profil' | '/wyprawa/$id' | '/edytuj/$id'
+    | '/'
+    | '/auth'
+    | '/ranking'
+    | '/nowa'
+    | '/profil'
+    | '/wyprawa/$id'
+    | '/edytuj/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/nowa' | '/profil' | '/wyprawa/$id' | '/edytuj/$id'
+  to:
+    | '/'
+    | '/auth'
+    | '/ranking'
+    | '/nowa'
+    | '/profil'
+    | '/wyprawa/$id'
+    | '/edytuj/$id'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/ranking'
     | '/_authenticated/nowa'
     | '/_authenticated/profil'
     | '/wyprawa/$id'
@@ -99,6 +122,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  RankingRoute: typeof RankingRoute
   WyprawaIdRoute: typeof WyprawaIdRoute
 }
 
@@ -123,6 +147,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ranking': {
+      id: '/ranking'
+      path: '/ranking'
+      fullPath: '/ranking'
+      preLoaderRoute: typeof RankingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/nowa': {
@@ -175,6 +206,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  RankingRoute: RankingRoute,
   WyprawaIdRoute: WyprawaIdRoute,
 }
 export const routeTree = rootRouteImport

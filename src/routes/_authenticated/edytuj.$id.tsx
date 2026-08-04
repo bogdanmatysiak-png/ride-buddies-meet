@@ -13,7 +13,7 @@ import {
 } from "@/lib/rides";
 import { planRoute } from "@/lib/maps.functions";
 import { RouteMap } from "@/components/RouteMap";
-import { useSession } from "@/hooks/useAuth";
+import { useIsAdmin, useSession } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/_authenticated/edytuj/$id")({
   head: () => ({
@@ -40,6 +40,7 @@ function EditRide() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useSession();
+  const isAdmin = useIsAdmin(user?.id);
   const { data: rides = [], isLoading } = useQuery({
     queryKey: ridesQueryKey,
     queryFn: fetchRides,
@@ -87,7 +88,7 @@ function EditRide() {
     );
   }
 
-  if (user && ride.hostId !== user.id) {
+  if (user && ride.hostId !== user.id && !isAdmin) {
     return (
       <main className="mx-auto max-w-3xl px-4 py-12">
         <h1 className="text-3xl text-foreground">To nie Twoja wyprawa</h1>
