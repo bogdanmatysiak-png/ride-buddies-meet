@@ -20,6 +20,8 @@ export type Database = {
           city: string | null
           created_at: string
           id: string
+          intercom: boolean
+          intercom_type: string
           nick: string
           updated_at: string
         }
@@ -28,6 +30,8 @@ export type Database = {
           city?: string | null
           created_at?: string
           id: string
+          intercom?: boolean
+          intercom_type?: string
           nick: string
           updated_at?: string
         }
@@ -36,6 +40,8 @@ export type Database = {
           city?: string | null
           created_at?: string
           id?: string
+          intercom?: boolean
+          intercom_type?: string
           nick?: string
           updated_at?: string
         }
@@ -148,6 +154,8 @@ export type Database = {
           host_id: string | null
           host_name: string
           id: string
+          intercom: boolean
+          intercom_type: string
           km: number
           level: Database["public"]["Enums"]["ride_level"]
           ride_date: string
@@ -163,6 +171,8 @@ export type Database = {
           host_id?: string | null
           host_name: string
           id?: string
+          intercom?: boolean
+          intercom_type?: string
           km?: number
           level?: Database["public"]["Enums"]["ride_level"]
           ride_date: string
@@ -178,6 +188,8 @@ export type Database = {
           host_id?: string | null
           host_name?: string
           id?: string
+          intercom?: boolean
+          intercom_type?: string
           km?: number
           level?: Database["public"]["Enums"]["ride_level"]
           ride_date?: string
