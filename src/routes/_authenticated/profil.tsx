@@ -32,6 +32,8 @@ function ProfilePage() {
   const [nick, setNick] = useState("");
   const [bike, setBike] = useState("");
   const [city, setCity] = useState("");
+  const [intercom, setIntercom] = useState(false);
+  const [intercomType, setIntercomType] = useState("");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -39,6 +41,8 @@ function ProfilePage() {
       setNick(profile.nick);
       setBike(profile.bike ?? "");
       setCity(profile.city ?? "");
+      setIntercom(profile.intercom);
+      setIntercomType(profile.intercom_type);
     } else if (user && !isLoading) {
       setNick((user.user_metadata?.["nick"] as string) ?? user.email?.split("@")[0] ?? "");
     }
@@ -52,7 +56,17 @@ function ProfilePage() {
     setBusy(true);
     const { error } = await supabase
       .from("profiles")
-      .upsert({ id: user.id, nick, bike: bike || null, city: city || null }, { onConflict: "id" });
+      .upsert(
+        {
+          id: user.id,
+          nick,
+          bike: bike || null,
+          city: city || null,
+          intercom,
+          intercom_type: intercom ? intercomType.trim() : "",
+        },
+        { onConflict: "id" },
+      );
     setBusy(false);
     if (error) {
       toast.error(error.message);
@@ -98,6 +112,35 @@ function ProfilePage() {
             className="input-moto"
           />
         </Labeled>
+        <div>
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Interkom
+          </span>
+          <div className="mt-2 flex gap-2">
+            {[true, false].map((v) => (
+              <button
+                key={String(v)}
+                type="button"
+                onClick={() => setIntercom(v)}
+                className={`rounded-full border px-4 py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors ${
+                  intercom === v
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-card text-muted-foreground hover:border-primary/50"
+                }`}
+              >
+                {v ? "Tak" : "Nie"}
+              </button>
+            ))}
+          </div>
+          {intercom && (
+            <input
+              value={intercomType}
+              onChange={(e) => setIntercomType(e.target.value)}
+              placeholder="Cardo Packtalk Edge / Sena 50S"
+              className="input-moto mt-3"
+            />
+          )}
+        </div>
         <button
           type="submit"
           disabled={busy}
