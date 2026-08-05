@@ -98,6 +98,9 @@ function RideDetail() {
         <Fact icon={<Users className="h-4 w-4" />} label="Ekipa">
           {ride.riders.length}/{ride.spots} {free > 0 ? `(${free} wolne)` : "(pełna)"}
         </Fact>
+        <Fact icon={<Users className="h-4 w-4" />} label="Interkom">
+          {ride.intercom ? (ride.intercomType ? `Tak — ${ride.intercomType}` : "Tak") : "Nie"}
+        </Fact>
       </dl>
 
       <section className="mt-5 rounded-lg border border-border bg-card p-5">
