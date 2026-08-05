@@ -32,6 +32,8 @@ function NewRide() {
   const { user } = useSession();
   const { data: profile } = useProfile(user?.id);
   const [level, setLevel] = useState<RideLevel>("chill");
+  const [intercom, setIntercom] = useState(false);
+  const [intercomType, setIntercomType] = useState("");
   const [busy, setBusy] = useState(false);
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
@@ -86,6 +88,8 @@ function NewRide() {
                 spots: Number(f.get("spots")),
                 description: String(f.get("description")),
                 level,
+                intercom,
+                intercomType: intercomType.trim(),
               },
               { id: user.id, nick: profile?.nick ?? "Motocyklista" },
             );
@@ -142,6 +146,45 @@ function NewRide() {
             onChange={setKm}
           />
           <Field name="spots" label="Miejsca" type="number" placeholder="12" />
+        </div>
+
+        <div className="rounded-lg border border-border bg-card p-4">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Interkom
+          </span>
+          <div className="mt-2 flex gap-2">
+            {[true, false].map((v) => (
+              <button
+                key={String(v)}
+                type="button"
+                onClick={() => setIntercom(v)}
+                className={`rounded-full border px-4 py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors ${
+                  intercom === v
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-card text-muted-foreground hover:border-primary/50"
+                }`}
+              >
+                {v ? "Tak" : "Nie"}
+              </button>
+            ))}
+          </div>
+          {intercom && (
+            <div className="mt-3">
+              <label
+                htmlFor="intercomType"
+                className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"
+              >
+                Rodzaj interkomu
+              </label>
+              <input
+                id="intercomType"
+                value={intercomType}
+                onChange={(e) => setIntercomType(e.target.value)}
+                placeholder="Cardo Packtalk Edge / Sena 50S"
+                className="input-moto mt-1"
+              />
+            </div>
+          )}
         </div>
 
         <div>

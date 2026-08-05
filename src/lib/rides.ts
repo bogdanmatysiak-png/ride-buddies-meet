@@ -15,6 +15,8 @@ export type Ride = {
   level: RideLevel;
   spots: number;
   description: string;
+  intercom: boolean;
+  intercomType: string;
   riderIds: string[];
   riders: string[];
 };
@@ -54,6 +56,8 @@ export async function fetchRides(): Promise<Ride[]> {
       level: r.level,
       spots: r.spots,
       description: r.description,
+      intercom: r.intercom,
+      intercomType: r.intercom_type,
       riderIds,
       riders: riderIds.map((id) => nickById.get(id) ?? "Motocyklista"),
     };
@@ -86,6 +90,8 @@ export type NewRideInput = {
   spots: number;
   level: RideLevel;
   description: string;
+  intercom: boolean;
+  intercomType: string;
 };
 
 export async function createRide(
@@ -106,6 +112,8 @@ export async function createRide(
       spots: input.spots,
       level: input.level,
       description: input.description,
+      intercom: input.intercom,
+      intercom_type: input.intercom ? input.intercomType : "",
     })
     .select("id")
     .single();
@@ -137,6 +145,8 @@ export async function updateRide(rideId: string, input: NewRideInput) {
       spots: input.spots,
       level: input.level,
       description: input.description,
+      intercom: input.intercom,
+      intercom_type: input.intercom ? input.intercomType : "",
     })
     .eq("id", rideId);
   if (error) throw error;

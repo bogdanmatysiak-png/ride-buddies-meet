@@ -38,6 +38,9 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [nick, setNick] = useState("");
+  const [bike, setBike] = useState("");
+  const [intercom, setIntercom] = useState(false);
+  const [intercomType, setIntercomType] = useState("");
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
   const navigate = useNavigate();
@@ -69,7 +72,16 @@ function AuthPage() {
         }
         await supabase
           .from("profiles")
-          .upsert({ id: data.session.user.id, nick }, { onConflict: "id" });
+          .upsert(
+            {
+              id: data.session.user.id,
+              nick,
+              bike: bike || null,
+              intercom,
+              intercom_type: intercom ? intercomType.trim() : "",
+            },
+            { onConflict: "id" },
+          );
         toast.success("Konto utworzone. Witaj w ekipie!");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -138,6 +150,47 @@ function AuthPage() {
               className="input-moto"
             />
           </Labeled>
+        )}
+        {mode === "signup" && (
+          <>
+            <Labeled label="Rodzaj motocykla">
+              <input
+                value={bike}
+                onChange={(e) => setBike(e.target.value)}
+                placeholder="Yamaha Ténéré 700"
+                className="input-moto"
+              />
+            </Labeled>
+            <div>
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Interkom
+              </span>
+              <div className="mt-2 flex gap-2">
+                {[true, false].map((v) => (
+                  <button
+                    key={String(v)}
+                    type="button"
+                    onClick={() => setIntercom(v)}
+                    className={`rounded-full border px-4 py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors ${
+                      intercom === v
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border bg-card text-muted-foreground hover:border-primary/50"
+                    }`}
+                  >
+                    {v ? "Tak" : "Nie"}
+                  </button>
+                ))}
+              </div>
+              {intercom && (
+                <input
+                  value={intercomType}
+                  onChange={(e) => setIntercomType(e.target.value)}
+                  placeholder="Cardo Packtalk Edge / Sena 50S"
+                  className="input-moto mt-3"
+                />
+              )}
+            </div>
+          </>
         )}
         <Labeled label="E-mail">
           <input

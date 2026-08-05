@@ -56,6 +56,8 @@ function EditRide() {
   const [spots, setSpots] = useState("");
   const [description, setDescription] = useState("");
   const [level, setLevel] = useState<RideLevel>("chill");
+  const [intercom, setIntercom] = useState(false);
+  const [intercomType, setIntercomType] = useState("");
   const [busy, setBusy] = useState(false);
   const [planning, setPlanning] = useState(false);
   const computeRoute = useServerFn(planRoute);
@@ -71,6 +73,8 @@ function EditRide() {
     setSpots(String(ride.spots));
     setDescription(ride.description);
     setLevel(ride.level);
+    setIntercom(ride.intercom);
+    setIntercomType(ride.intercomType);
   }, [ride]);
 
   if (isLoading) {
@@ -135,6 +139,8 @@ function EditRide() {
         spots: Number(spots),
         description,
         level,
+        intercom,
+        intercomType: intercomType.trim(),
       });
       await queryClient.invalidateQueries({ queryKey: ridesQueryKey });
       toast.success("Wyprawa zaktualizowana");
@@ -194,6 +200,45 @@ function EditRide() {
         <div className="grid grid-cols-2 gap-3">
           <Field name="km" label="Dystans (km)" type="number" value={km} onChange={setKm} />
           <Field name="spots" label="Miejsca" type="number" value={spots} onChange={setSpots} />
+        </div>
+
+        <div className="rounded-lg border border-border bg-card p-4">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Interkom
+          </span>
+          <div className="mt-2 flex gap-2">
+            {[true, false].map((v) => (
+              <button
+                key={String(v)}
+                type="button"
+                onClick={() => setIntercom(v)}
+                className={`rounded-full border px-4 py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors ${
+                  intercom === v
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-card text-muted-foreground hover:border-primary/50"
+                }`}
+              >
+                {v ? "Tak" : "Nie"}
+              </button>
+            ))}
+          </div>
+          {intercom && (
+            <div className="mt-3">
+              <label
+                htmlFor="intercomType"
+                className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"
+              >
+                Rodzaj interkomu
+              </label>
+              <input
+                id="intercomType"
+                value={intercomType}
+                onChange={(e) => setIntercomType(e.target.value)}
+                placeholder="Cardo Packtalk Edge / Sena 50S"
+                className="input-moto mt-1"
+              />
+            </div>
+          )}
         </div>
 
         <div>
