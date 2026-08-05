@@ -14,7 +14,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useSession } from "@/hooks/useAuth";
+import { useSession, useIsAdmin } from "@/hooks/useAuth";
 
 function NotFoundComponent() {
   return (
@@ -175,6 +175,7 @@ function AuthNav() {
   const { session, loading } = useSession();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const isAdmin = useIsAdmin(session?.user.id);
 
   if (loading) return <span className="h-8 w-24" />;
 
@@ -205,6 +206,14 @@ function AuthNav() {
       >
         Ranking
       </Link>
+      {isAdmin && (
+        <Link
+          to="/admin"
+          className="text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-primary"
+        >
+          Statystyki
+        </Link>
+      )}
       <Link
         to="/nowa"
         className="rounded-md bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
