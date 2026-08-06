@@ -28,6 +28,10 @@ export type Profile = {
   city: string | null;
   intercom: boolean;
   intercom_type: string;
+  pref_curvy: boolean;
+  pref_avoid_highways: boolean;
+  pref_avoid_tolls: boolean;
+  pref_avoid_ferries: boolean;
 };
 
 export function useProfile(userId: string | undefined) {
@@ -37,7 +41,9 @@ export function useProfile(userId: string | undefined) {
     queryFn: async (): Promise<Profile | null> => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, nick, bike, city, intercom, intercom_type")
+        .select(
+          "id, nick, bike, city, intercom, intercom_type, pref_curvy, pref_avoid_highways, pref_avoid_tolls, pref_avoid_ferries",
+        )
         .eq("id", userId!)
         .maybeSingle();
       if (error) throw error;

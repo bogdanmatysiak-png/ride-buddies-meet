@@ -13,7 +13,15 @@ import {
 } from "@/lib/rides";
 import { planRoute } from "@/lib/maps.functions";
 import { RouteMap } from "@/components/RouteMap";
-import { useIsAdmin, useSession } from "@/hooks/useAuth";
+import { RoutePrefsPicker } from "@/components/RoutePrefsPicker";
+import {
+  defaultRoutePrefs,
+  prefsFromProfile,
+  prefsSummary,
+  saveRoutePrefs,
+  type RoutePrefs,
+} from "@/lib/route-prefs";
+import { useIsAdmin, useProfile, useSession } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/_authenticated/edytuj/$id")({
   head: () => ({
@@ -41,6 +49,7 @@ function EditRide() {
   const queryClient = useQueryClient();
   const { user } = useSession();
   const isAdmin = useIsAdmin(user?.id);
+  const { data: profile } = useProfile(user?.id);
   const { data: rides = [], isLoading } = useQuery({
     queryKey: ridesQueryKey,
     queryFn: fetchRides,
@@ -60,7 +69,13 @@ function EditRide() {
   const [intercomType, setIntercomType] = useState("");
   const [busy, setBusy] = useState(false);
   const [planning, setPlanning] = useState(false);
+  const [prefs, setPrefs] = useState<RoutePrefs>(defaultRoutePrefs);
+  const [savingPrefs, setSavingPrefs] = useState(false);
   const computeRoute = useServerFn(planRoute);
+
+  useEffect(() => {
+    if (profile) setPrefs(prefsFromProfile(profile));
+  }, [profile]);
 
   useEffect(() => {
     if (!ride) return;
@@ -113,15 +128,31 @@ function EditRide() {
     }
     setPlanning(true);
     try {
-      const result = await computeRoute({ data: { start: start.trim(), end: end.trim() } });
+      const result = await computeRoute({
+        data: { start: start.trim(), end: end.trim(), ...prefs },
+      });
       setKm(String(result.km));
       toast.success(
-        `Trasa wyznaczona: ${result.km} km, ok. ${Math.floor(result.minutes / 60)} h ${result.minutes % 60} min`,
+        `Trasa wyznaczona: ${result.km} km, ok. ${Math.floor(result.minutes / 60)} h ${result.minutes % 60} min (${prefsSummary(prefs)})`,
       );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Nie udało się wyznaczyć trasy");
     } finally {
       setPlanning(false);
+    }
+  }
+
+  async function handleSavePrefs() {
+    if (!user) return;
+    setSavingPrefs(true);
+    try {
+      await saveRoutePrefs(user.id, prefs);
+      await queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
+      toast.success("Zapisałem Twoje domyślne preferencje trasy");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Nie udało się zapisać preferencji");
+    } finally {
+      setSavingPrefs(false);
     }
   }
 
@@ -181,16 +212,25 @@ function EditRide() {
           <Field name="end" label="Cel" value={end} onChange={setEnd} />
         </div>
         <div className="rounded-lg border border-border bg-card p-4">
+          <RoutePrefsPicker prefs={prefs} onChange={setPrefs} />
+          <button
+            type="button"
+            onClick={handleSavePrefs}
+            disabled={savingPrefs}
+            className="mt-3 text-[11px] font-semibold uppercase tracking-wider text-primary underline-offset-4 hover:underline disabled:opacity-60"
+          >
+            {savingPrefs ? "Zapisuję…" : "Zapisz jako moje domyślne"}
+          </button>
           <button
             type="button"
             onClick={handlePlanRoute}
             disabled={planning}
-            className="w-full rounded-md border border-primary px-4 py-2 text-xs font-semibold uppercase tracking-wider text-primary transition-colors hover:bg-primary hover:text-primary-foreground disabled:opacity-60"
+            className="mt-3 w-full rounded-md border border-primary px-4 py-2 text-xs font-semibold uppercase tracking-wider text-primary transition-colors hover:bg-primary hover:text-primary-foreground disabled:opacity-60"
           >
             {planning ? "Liczę trasę…" : "Przelicz trasę w Google Maps"}
           </button>
           {start.length > 1 && end.length > 1 && (
-            <RouteMap start={start} end={end} className="mt-3" />
+            <RouteMap start={start} end={end} prefs={prefs} className="mt-3" />
           )}
         </div>
         <div className="grid grid-cols-2 gap-3">

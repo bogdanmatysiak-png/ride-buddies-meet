@@ -23,6 +23,10 @@ export type Database = {
           intercom: boolean
           intercom_type: string
           nick: string
+          pref_avoid_ferries: boolean
+          pref_avoid_highways: boolean
+          pref_avoid_tolls: boolean
+          pref_curvy: boolean
           updated_at: string
         }
         Insert: {
@@ -33,6 +37,10 @@ export type Database = {
           intercom?: boolean
           intercom_type?: string
           nick: string
+          pref_avoid_ferries?: boolean
+          pref_avoid_highways?: boolean
+          pref_avoid_tolls?: boolean
+          pref_curvy?: boolean
           updated_at?: string
         }
         Update: {
@@ -43,6 +51,10 @@ export type Database = {
           intercom?: boolean
           intercom_type?: string
           nick?: string
+          pref_avoid_ferries?: boolean
+          pref_avoid_highways?: boolean
+          pref_avoid_tolls?: boolean
+          pref_curvy?: boolean
           updated_at?: string
         }
         Relationships: []

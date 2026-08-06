@@ -6,6 +6,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useIsAdmin, useProfile, useSession } from "@/hooks/useAuth";
 import { fetchRides, ridesQueryKey } from "@/lib/rides";
 import { RideCard } from "@/components/RideCard";
+import { RoutePrefsPicker } from "@/components/RoutePrefsPicker";
+import {
+  defaultRoutePrefs,
+  prefsFromProfile,
+  prefsToProfile,
+  type RoutePrefs,
+} from "@/lib/route-prefs";
 
 export const Route = createFileRoute("/_authenticated/profil")({
   head: () => ({
@@ -34,6 +41,7 @@ function ProfilePage() {
   const [city, setCity] = useState("");
   const [intercom, setIntercom] = useState(false);
   const [intercomType, setIntercomType] = useState("");
+  const [prefs, setPrefs] = useState<RoutePrefs>(defaultRoutePrefs);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -43,6 +51,7 @@ function ProfilePage() {
       setCity(profile.city ?? "");
       setIntercom(profile.intercom);
       setIntercomType(profile.intercom_type);
+      setPrefs(prefsFromProfile(profile));
     } else if (user && !isLoading) {
       setNick((user.user_metadata?.["nick"] as string) ?? user.email?.split("@")[0] ?? "");
     }
@@ -64,6 +73,7 @@ function ProfilePage() {
           city: city || null,
           intercom,
           intercom_type: intercom ? intercomType.trim() : "",
+          ...prefsToProfile(prefs),
         },
         { onConflict: "id" },
       );
@@ -140,6 +150,16 @@ function ProfilePage() {
               className="input-moto mt-3"
             />
           )}
+        </div>
+        <div>
+          <RoutePrefsPicker
+            prefs={prefs}
+            onChange={setPrefs}
+            title="Domyślne preferencje trasy"
+          />
+          <p className="mt-2 text-xs text-muted-foreground">
+            Te ustawienia podstawiają się automatycznie, gdy wyznaczasz trasę nowej wyprawy.
+          </p>
         </div>
         <button
           type="submit"
