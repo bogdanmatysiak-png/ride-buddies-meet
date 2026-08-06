@@ -14,7 +14,7 @@ export function RouteMap({
   if (!BROWSER_KEY || !start || !end) return null;
   const src = `https://www.google.com/maps/embed/v1/directions?key=${BROWSER_KEY}&origin=${encodeURIComponent(
     start,
-  )}&destination=${encodeURIComponent(end)}&mode=driving&language=pl`;
+  )}&destination=${encodeURIComponent(end)}&mode=driving&avoid=highways|tolls|ferries&language=pl`;
   return (
     <div className={`overflow-hidden rounded-lg border border-border ${className}`}>
       <iframe
