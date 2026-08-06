@@ -1,11 +1,19 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { createRide, levelLabel, ridesQueryKey, type RideLevel } from "@/lib/rides";
 import { planRoute, type RoutePlan } from "@/lib/maps.functions";
 import { RouteMap } from "@/components/RouteMap";
+import { RoutePrefsPicker } from "@/components/RoutePrefsPicker";
+import {
+  defaultRoutePrefs,
+  prefsFromProfile,
+  prefsSummary,
+  saveRoutePrefs,
+  type RoutePrefs,
+} from "@/lib/route-prefs";
 import { useProfile, useSession } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/_authenticated/nowa")({
@@ -40,7 +48,27 @@ function NewRide() {
   const [km, setKm] = useState("");
   const [plan, setPlan] = useState<RoutePlan | null>(null);
   const [planning, setPlanning] = useState(false);
+  const [prefs, setPrefs] = useState<RoutePrefs>(defaultRoutePrefs);
+  const [savingPrefs, setSavingPrefs] = useState(false);
   const computeRoute = useServerFn(planRoute);
+
+  useEffect(() => {
+    if (profile) setPrefs(prefsFromProfile(profile));
+  }, [profile]);
+
+  async function handleSavePrefs() {
+    if (!user) return;
+    setSavingPrefs(true);
+    try {
+      await saveRoutePrefs(user.id, prefs);
+      await queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
+      toast.success("Zapisałem Twoje domyślne preferencje trasy");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Nie udało się zapisać preferencji");
+    } finally {
+      setSavingPrefs(false);
+    }
+  }
 
   async function handlePlanRoute() {
     if (start.trim().length < 2 || end.trim().length < 2) {
@@ -49,11 +77,13 @@ function NewRide() {
     }
     setPlanning(true);
     try {
-      const result = await computeRoute({ data: { start: start.trim(), end: end.trim() } });
+      const result = await computeRoute({
+        data: { start: start.trim(), end: end.trim(), ...prefs },
+      });
       setPlan(result);
       setKm(String(result.km));
       toast.success(
-        `Trasa bez autostrad: ${result.km} km, ok. ${Math.floor(result.minutes / 60)} h ${result.minutes % 60} min, ${result.turns} zakrętów`,
+        `${result.km} km, ok. ${Math.floor(result.minutes / 60)} h ${result.minutes % 60} min, ${result.turns} zakrętów (${prefsSummary(prefs)})`,
       );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Nie udało się wyznaczyć trasy");
@@ -115,11 +145,20 @@ function NewRide() {
           <Field name="end" label="Cel" placeholder="Zakopane" value={end} onChange={setEnd} />
         </div>
         <div className="rounded-lg border border-border bg-card p-4">
+          <RoutePrefsPicker prefs={prefs} onChange={setPrefs} />
+          <button
+            type="button"
+            onClick={handleSavePrefs}
+            disabled={savingPrefs}
+            className="mt-3 text-[11px] font-semibold uppercase tracking-wider text-primary underline-offset-4 hover:underline disabled:opacity-60"
+          >
+            {savingPrefs ? "Zapisuję…" : "Zapisz jako moje domyślne"}
+          </button>
           <button
             type="button"
             onClick={handlePlanRoute}
             disabled={planning}
-            className="w-full rounded-md border border-primary px-4 py-2 text-xs font-semibold uppercase tracking-wider text-primary transition-colors hover:bg-primary hover:text-primary-foreground disabled:opacity-60"
+            className="mt-3 w-full rounded-md border border-primary px-4 py-2 text-xs font-semibold uppercase tracking-wider text-primary transition-colors hover:bg-primary hover:text-primary-foreground disabled:opacity-60"
           >
             {planning ? "Liczę trasę…" : "Wyznacz trasę w Google Maps"}
           </button>
@@ -128,9 +167,14 @@ function NewRide() {
               <p className="mt-3 text-sm text-muted-foreground">
                 {plan.km} km · ok. {Math.floor(plan.minutes / 60)} h {plan.minutes % 60} min jazdy
                 {" · "}
-                {plan.turns} zakrętów · bez autostrad i ekspresówek
+                {plan.turns} zakrętów · {prefsSummary(prefs)}
               </p>
-              <RouteMap start={plan.startAddress} end={plan.endAddress} className="mt-3" />
+              <RouteMap
+                start={plan.startAddress}
+                end={plan.endAddress}
+                prefs={prefs}
+                className="mt-3"
+              />
             </>
           )}
         </div>
