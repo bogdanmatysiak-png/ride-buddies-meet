@@ -53,7 +53,7 @@ function NewRide() {
       setPlan(result);
       setKm(String(result.km));
       toast.success(
-        `Trasa wyznaczona: ${result.km} km, ok. ${Math.floor(result.minutes / 60)} h ${result.minutes % 60} min`,
+        `Trasa bez autostrad: ${result.km} km, ok. ${Math.floor(result.minutes / 60)} h ${result.minutes % 60} min, ${result.turns} zakrętów`,
       );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Nie udało się wyznaczyć trasy");
@@ -127,6 +127,8 @@ function NewRide() {
             <>
               <p className="mt-3 text-sm text-muted-foreground">
                 {plan.km} km · ok. {Math.floor(plan.minutes / 60)} h {plan.minutes % 60} min jazdy
+                {" · "}
+                {plan.turns} zakrętów · bez autostrad i ekspresówek
               </p>
               <RouteMap start={plan.startAddress} end={plan.endAddress} className="mt-3" />
             </>
