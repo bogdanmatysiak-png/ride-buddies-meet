@@ -6,6 +6,10 @@ const GATEWAY_URL = "https://connector-gateway.lovable.dev/google_maps";
 const schema = z.object({
   start: z.string().min(2).max(120),
   end: z.string().min(2).max(120),
+  curvy: z.boolean().default(true),
+  avoidHighways: z.boolean().default(true),
+  avoidTolls: z.boolean().default(true),
+  avoidFerries: z.boolean().default(true),
 });
 
 export type RoutePlan = {
@@ -17,7 +21,16 @@ export type RoutePlan = {
 };
 
 export const planRoute = createServerFn({ method: "POST" })
-  .inputValidator((input: { start: string; end: string }) => schema.parse(input))
+  .inputValidator(
+    (input: {
+      start: string;
+      end: string;
+      curvy?: boolean;
+      avoidHighways?: boolean;
+      avoidTolls?: boolean;
+      avoidFerries?: boolean;
+    }) => schema.parse(input),
+  )
   .handler(async ({ data }): Promise<RoutePlan> => {
     const lovableKey = process.env["LOVABLE_API_KEY"];
     const mapsKey = process.env["GOOGLE_MAPS_API_KEY"];
@@ -41,9 +54,9 @@ export const planRoute = createServerFn({ method: "POST" })
         routingPreference: "TRAFFIC_UNAWARE",
         computeAlternativeRoutes: true,
         routeModifiers: {
-          avoidHighways: true,
-          avoidTolls: true,
-          avoidFerries: true,
+          avoidHighways: data.avoidHighways,
+          avoidTolls: data.avoidTolls,
+          avoidFerries: data.avoidFerries,
         },
         languageCode: "pl-PL",
         units: "METRIC",
@@ -91,10 +104,12 @@ export const planRoute = createServerFn({ method: "POST" })
           ).length,
         0,
       );
-    // Najbardziej "motocyklowa" trasa: najwięcej zakrętów, bez autostrad i ekspresówek.
-    const route = (payload.routes ?? [])
-      .filter((r) => r.distanceMeters)
-      .sort((a, b) => countTurns(b) - countTurns(a))[0];
+    // Zgodnie z preferencjami: albo najbardziej "motocyklowy" wariant (najwięcej zakrętów),
+    // albo pierwszy (najszybszy) wariant zwrócony przez Google.
+    const candidates = (payload.routes ?? []).filter((r) => r.distanceMeters);
+    const route = data.curvy
+      ? [...candidates].sort((a, b) => countTurns(b) - countTurns(a))[0]
+      : candidates[0];
     if (!route?.distanceMeters) {
       throw new Error("Google nie znalazło trasy między tymi punktami");
     }
