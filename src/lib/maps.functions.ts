@@ -13,6 +13,7 @@ export type RoutePlan = {
   minutes: number;
   startAddress: string;
   endAddress: string;
+  turns: number;
 };
 
 export const planRoute = createServerFn({ method: "POST" })
@@ -31,13 +32,19 @@ export const planRoute = createServerFn({ method: "POST" })
         "X-Connection-Api-Key": mapsKey,
         "Content-Type": "application/json",
         "X-Goog-FieldMask":
-          "routes.distanceMeters,routes.duration,routes.legs.startLocation,routes.legs.endLocation",
+          "routes.distanceMeters,routes.duration,routes.legs.steps.navigationInstruction.maneuver",
       },
       body: JSON.stringify({
         origin: { address: data.start },
         destination: { address: data.end },
         travelMode: "DRIVE",
         routingPreference: "TRAFFIC_UNAWARE",
+        computeAlternativeRoutes: true,
+        routeModifiers: {
+          avoidHighways: true,
+          avoidTolls: true,
+          avoidFerries: true,
+        },
         languageCode: "pl-PL",
         units: "METRIC",
       }),
@@ -67,9 +74,27 @@ export const planRoute = createServerFn({ method: "POST" })
     }
 
     const payload = (await response.json()) as {
-      routes?: Array<{ distanceMeters?: number; duration?: string }>;
+      routes?: Array<{
+        distanceMeters?: number;
+        duration?: string;
+        legs?: Array<{
+          steps?: Array<{ navigationInstruction?: { maneuver?: string } }>;
+        }>;
+      }>;
     };
-    const route = payload.routes?.[0];
+    const countTurns = (r: NonNullable<typeof payload.routes>[number]) =>
+      (r.legs ?? []).reduce(
+        (sum, leg) =>
+          sum +
+          (leg.steps ?? []).filter((s) =>
+            /TURN|ROUNDABOUT|FORK/.test(s.navigationInstruction?.maneuver ?? ""),
+          ).length,
+        0,
+      );
+    // Najbardziej "motocyklowa" trasa: najwięcej zakrętów, bez autostrad i ekspresówek.
+    const route = (payload.routes ?? [])
+      .filter((r) => r.distanceMeters)
+      .sort((a, b) => countTurns(b) - countTurns(a))[0];
     if (!route?.distanceMeters) {
       throw new Error("Google nie znalazło trasy między tymi punktami");
     }
@@ -80,5 +105,6 @@ export const planRoute = createServerFn({ method: "POST" })
       minutes: Math.round(seconds / 60),
       startAddress: data.start,
       endAddress: data.end,
+      turns: countTurns(route),
     };
   });
