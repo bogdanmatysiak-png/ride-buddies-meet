@@ -81,7 +81,18 @@ function RideDetail() {
         </span>
         <h1 className="mt-3 text-4xl text-foreground">{ride.title}</h1>
         <p className="mt-2 text-sm font-semibold text-primary">
-          Prowadzi {ride.host}
+          Prowadzi{" "}
+          {ride.hostId ? (
+            <Link
+              to="/motocyklista/$id"
+              params={{ id: ride.hostId }}
+              className="underline underline-offset-2 hover:opacity-80"
+            >
+              {ride.host}
+            </Link>
+          ) : (
+            ride.host
+          )}
         </p>
       </div>
 
@@ -109,10 +120,16 @@ function RideDetail() {
           {ride.description}
         </p>
         <RouteMap start={ride.start} end={ride.end} className="mt-4" />
+        <p className="mt-2 text-xs text-muted-foreground">
+          Trasa wyznaczana bez autostrad i dróg ekspresowych — wybieramy wariant z największą
+          liczbą zakrętów i widoków.
+        </p>
         <a
           href={`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(
             ride.start,
-          )}&destination=${encodeURIComponent(ride.end)}&travelmode=driving`}
+          )}&destination=${encodeURIComponent(
+            ride.end,
+          )}&travelmode=driving&avoid=highways|tolls|ferries`}
           target="_blank"
           rel="noreferrer"
           className="mt-3 inline-block text-xs font-semibold uppercase tracking-wider text-primary"
@@ -124,12 +141,15 @@ function RideDetail() {
       <section className="mt-4 rounded-lg border border-border bg-card p-5">
         <h2 className="text-2xl text-foreground">Kto jedzie</h2>
         <ul className="mt-3 flex flex-wrap gap-2">
-          {ride.riders.map((r) => (
-            <li
-              key={r}
-              className="rounded-full border border-border bg-secondary px-3 py-1 text-sm text-foreground"
-            >
-              {r}
+          {ride.riderIds.map((riderId, i) => (
+            <li key={riderId}>
+              <Link
+                to="/motocyklista/$id"
+                params={{ id: riderId }}
+                className="inline-block rounded-full border border-border bg-secondary px-3 py-1 text-sm text-foreground transition-colors hover:border-primary hover:text-primary"
+              >
+                {ride.riders[i] ?? "Motocyklista"}
+              </Link>
             </li>
           ))}
         </ul>

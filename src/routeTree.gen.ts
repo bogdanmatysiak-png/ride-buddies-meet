@@ -16,6 +16,7 @@ import { Route as RankingRouteImport } from './routes/ranking'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedNowaRouteImport } from './routes/_authenticated/nowa'
 import { Route as AuthenticatedProfilRouteImport } from './routes/_authenticated/profil'
+import { Route as MotocyklistaIdRouteImport } from './routes/motocyklista.$id'
 import { Route as WyprawaIdRouteImport } from './routes/wyprawa.$id'
 import { Route as AuthenticatedEdytujIdRouteImport } from './routes/_authenticated/edytuj.$id'
 
@@ -53,6 +54,11 @@ const AuthenticatedProfilRoute = AuthenticatedProfilRouteImport.update({
   path: '/profil',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const MotocyklistaIdRoute = MotocyklistaIdRouteImport.update({
+  id: '/motocyklista/$id',
+  path: '/motocyklista/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const WyprawaIdRoute = WyprawaIdRouteImport.update({
   id: '/wyprawa/$id',
   path: '/wyprawa/$id',
@@ -71,6 +77,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AuthenticatedAdminRoute
   '/nowa': typeof AuthenticatedNowaRoute
   '/profil': typeof AuthenticatedProfilRoute
+  '/motocyklista/$id': typeof MotocyklistaIdRoute
   '/wyprawa/$id': typeof WyprawaIdRoute
   '/edytuj/$id': typeof AuthenticatedEdytujIdRoute
 }
@@ -81,6 +88,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AuthenticatedAdminRoute
   '/nowa': typeof AuthenticatedNowaRoute
   '/profil': typeof AuthenticatedProfilRoute
+  '/motocyklista/$id': typeof MotocyklistaIdRoute
   '/wyprawa/$id': typeof WyprawaIdRoute
   '/edytuj/$id': typeof AuthenticatedEdytujIdRoute
 }
@@ -93,6 +101,7 @@ export interface FileRoutesById {
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/nowa': typeof AuthenticatedNowaRoute
   '/_authenticated/profil': typeof AuthenticatedProfilRoute
+  '/motocyklista/$id': typeof MotocyklistaIdRoute
   '/wyprawa/$id': typeof WyprawaIdRoute
   '/_authenticated/edytuj/$id': typeof AuthenticatedEdytujIdRoute
 }
@@ -105,6 +114,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/nowa'
     | '/profil'
+    | '/motocyklista/$id'
     | '/wyprawa/$id'
     | '/edytuj/$id'
   fileRoutesByTo: FileRoutesByTo
@@ -115,6 +125,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/nowa'
     | '/profil'
+    | '/motocyklista/$id'
     | '/wyprawa/$id'
     | '/edytuj/$id'
   id:
@@ -126,6 +137,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin'
     | '/_authenticated/nowa'
     | '/_authenticated/profil'
+    | '/motocyklista/$id'
     | '/wyprawa/$id'
     | '/_authenticated/edytuj/$id'
   fileRoutesById: FileRoutesById
@@ -135,6 +147,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   RankingRoute: typeof RankingRoute
+  MotocyklistaIdRoute: typeof MotocyklistaIdRoute
   WyprawaIdRoute: typeof WyprawaIdRoute
 }
 
@@ -189,6 +202,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProfilRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/motocyklista/$id': {
+      id: '/motocyklista/$id'
+      path: '/motocyklista/$id'
+      fullPath: '/motocyklista/$id'
+      preLoaderRoute: typeof MotocyklistaIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/wyprawa/$id': {
       id: '/wyprawa/$id'
       path: '/wyprawa/$id'
@@ -228,18 +248,9 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   RankingRoute: RankingRoute,
+  MotocyklistaIdRoute: MotocyklistaIdRoute,
   WyprawaIdRoute: WyprawaIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
