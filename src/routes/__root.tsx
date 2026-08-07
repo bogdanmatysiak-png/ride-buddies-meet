@@ -223,6 +223,12 @@ function AuthNav() {
         Ogłoś wyprawę
       </Link>
       <Link
+        to="/grupy"
+        className="rounded-md border border-border px-3 py-1.5 text-sm font-semibold text-foreground transition-colors hover:border-primary/60"
+      >
+        Grupy
+      </Link>
+      <Link
         to="/profil"
         className="rounded-md border border-border px-3 py-1.5 text-sm font-semibold text-foreground transition-colors hover:border-primary/60"
       >
