@@ -7,19 +7,24 @@ const BROWSER_KEY = import.meta.env['VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_
 export function RouteMap({
   start,
   end,
+  waypoints = [],
   className = "",
   prefs = defaultRoutePrefs,
 }: {
   start: string;
   end: string;
+  waypoints?: string[];
   className?: string;
   prefs?: RoutePrefs;
 }) {
   if (!BROWSER_KEY || !start || !end) return null;
   const avoid = embedAvoidParam(prefs);
+  const via = waypoints.filter((w) => w.trim().length > 1).slice(0, 20);
   const src = `https://www.google.com/maps/embed/v1/directions?key=${BROWSER_KEY}&origin=${encodeURIComponent(
     start,
-  )}&destination=${encodeURIComponent(end)}&mode=driving${
+  )}&destination=${encodeURIComponent(end)}${
+    via.length ? `&waypoints=${via.map((w) => encodeURIComponent(w)).join("|")}` : ""
+  }&mode=driving${
     avoid ? `&avoid=${avoid}` : ""
   }&language=pl`;
   return (
