@@ -61,6 +61,7 @@ export function WaypointsEditor({
             <li
               key={`${w}-${i}`}
               draggable={!disabled}
+              data-wp-index={i}
               onDragStart={(e) => {
                 setDragIndex(i);
                 e.dataTransfer.effectAllowed = "move";
@@ -85,7 +86,27 @@ export function WaypointsEditor({
                     : "border-border"
               } ${disabled ? "" : "cursor-grab active:cursor-grabbing"}`}
             >
-              <span aria-hidden className="select-none text-sm text-muted-foreground">
+              <span
+                aria-hidden
+                className="touch-none select-none text-sm text-muted-foreground"
+                onTouchStart={() => !disabled && setDragIndex(i)}
+                onTouchMove={(e) => {
+                  if (disabled || dragIndex === null) return;
+                  e.preventDefault();
+                  const t = e.touches[0];
+                  if (!t) return;
+                  const el = document
+                    .elementFromPoint(t.clientX, t.clientY)
+                    ?.closest("[data-wp-index]");
+                  const idx = el ? Number(el.getAttribute("data-wp-index")) : null;
+                  if (idx !== null && !Number.isNaN(idx)) setOverIndex(idx);
+                }}
+                onTouchEnd={() => {
+                  if (overIndex !== null) drop(overIndex);
+                  else endDrag();
+                }}
+                onTouchCancel={endDrag}
+              >
                 ⠿
               </span>
               <span className="text-[11px] font-semibold uppercase tracking-wider text-primary">
