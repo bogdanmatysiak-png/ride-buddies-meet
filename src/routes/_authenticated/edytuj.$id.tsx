@@ -76,6 +76,11 @@ function EditRide() {
   const [intercom, setIntercom] = useState(false);
   const [intercomType, setIntercomType] = useState("");
   const [groupId, setGroupId] = useState<string | null>(null);
+  const { data: groups = [] } = useQuery({
+    queryKey: [...groupsQueryKey, user?.id],
+    queryFn: () => fetchMyGroups(user!.id),
+    enabled: !!user,
+  });
   const [busy, setBusy] = useState(false);
   const [prefs, setPrefs] = useState<RoutePrefs>(defaultRoutePrefs);
   const [savingPrefs, setSavingPrefs] = useState(false);
