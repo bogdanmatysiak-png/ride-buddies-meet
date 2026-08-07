@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as RankingRouteImport } from './routes/ranking'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
+import { Route as AuthenticatedGrupyRouteImport } from './routes/_authenticated/grupy'
 import { Route as AuthenticatedNowaRouteImport } from './routes/_authenticated/nowa'
 import { Route as AuthenticatedPowiadomieniaRouteImport } from './routes/_authenticated/powiadomienia'
 import { Route as AuthenticatedProfilRouteImport } from './routes/_authenticated/profil'
@@ -43,6 +44,11 @@ const RankingRoute = RankingRouteImport.update({
 const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedGrupyRoute = AuthenticatedGrupyRouteImport.update({
+  id: '/grupy',
+  path: '/grupy',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedNowaRoute = AuthenticatedNowaRouteImport.update({
@@ -82,6 +88,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/ranking': typeof RankingRoute
   '/admin': typeof AuthenticatedAdminRoute
+  '/grupy': typeof AuthenticatedGrupyRoute
   '/nowa': typeof AuthenticatedNowaRoute
   '/powiadomienia': typeof AuthenticatedPowiadomieniaRoute
   '/profil': typeof AuthenticatedProfilRoute
@@ -94,6 +101,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/ranking': typeof RankingRoute
   '/admin': typeof AuthenticatedAdminRoute
+  '/grupy': typeof AuthenticatedGrupyRoute
   '/nowa': typeof AuthenticatedNowaRoute
   '/powiadomienia': typeof AuthenticatedPowiadomieniaRoute
   '/profil': typeof AuthenticatedProfilRoute
@@ -108,6 +116,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/ranking': typeof RankingRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
+  '/_authenticated/grupy': typeof AuthenticatedGrupyRoute
   '/_authenticated/nowa': typeof AuthenticatedNowaRoute
   '/_authenticated/powiadomienia': typeof AuthenticatedPowiadomieniaRoute
   '/_authenticated/profil': typeof AuthenticatedProfilRoute
@@ -122,6 +131,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/ranking'
     | '/admin'
+    | '/grupy'
     | '/nowa'
     | '/powiadomienia'
     | '/profil'
@@ -134,6 +144,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/ranking'
     | '/admin'
+    | '/grupy'
     | '/nowa'
     | '/powiadomienia'
     | '/profil'
@@ -147,6 +158,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/ranking'
     | '/_authenticated/admin'
+    | '/_authenticated/grupy'
     | '/_authenticated/nowa'
     | '/_authenticated/powiadomienia'
     | '/_authenticated/profil'
@@ -201,6 +213,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/grupy': {
+      id: '/_authenticated/grupy'
+      path: '/grupy'
+      fullPath: '/grupy'
+      preLoaderRoute: typeof AuthenticatedGrupyRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/nowa': {
       id: '/_authenticated/nowa'
       path: '/nowa'
@@ -248,6 +267,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
+  AuthenticatedGrupyRoute: typeof AuthenticatedGrupyRoute
   AuthenticatedNowaRoute: typeof AuthenticatedNowaRoute
   AuthenticatedPowiadomieniaRoute: typeof AuthenticatedPowiadomieniaRoute
   AuthenticatedProfilRoute: typeof AuthenticatedProfilRoute
@@ -256,6 +276,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
+  AuthenticatedGrupyRoute: AuthenticatedGrupyRoute,
   AuthenticatedNowaRoute: AuthenticatedNowaRoute,
   AuthenticatedPowiadomieniaRoute: AuthenticatedPowiadomieniaRoute,
   AuthenticatedProfilRoute: AuthenticatedProfilRoute,
