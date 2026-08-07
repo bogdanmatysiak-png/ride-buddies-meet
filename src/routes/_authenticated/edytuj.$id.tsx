@@ -23,6 +23,7 @@ import {
 } from "@/lib/route-prefs";
 import { useIsAdmin, useProfile, useSession } from "@/hooks/useAuth";
 import { rideMessagesQueryKey, sendRideUpdateNotice } from "@/lib/chat";
+import { notifyRideParticipants } from "@/lib/notifications";
 
 export const Route = createFileRoute("/_authenticated/edytuj/$id")({
   head: () => ({
@@ -196,7 +197,18 @@ function EditRide() {
         try {
           await sendRideUpdateNotice(id, user.id, changes);
           await queryClient.invalidateQueries({ queryKey: rideMessagesQueryKey(id) });
-          toast.success("Powiadomiłem uczestników o zmianach na czacie wyprawy");
+          const notified = await notifyRideParticipants({
+            rideId: id,
+            userIds: prev?.riderIds ?? [],
+            exceptUserId: user.id,
+            title: `Trasa przeliczona: ${title}`,
+            body: changes.map((c) => `• ${c}`).join("\n"),
+          });
+          toast.success(
+            notified > 0
+              ? `Powiadomiłem ekipę (${notified}) o przeliczonej trasie`
+              : "Zmiany ogłoszone na czacie wyprawy",
+          );
         } catch {
           toast.error("Zmiany zapisane, ale nie udało się powiadomić uczestników");
         }
