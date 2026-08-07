@@ -303,8 +303,6 @@ function NewRide() {
             htmlFor="description"
             className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"
           >
-            className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"
-          >
             Opis
           </label>
           <textarea
@@ -316,6 +314,8 @@ function NewRide() {
             className="input-moto mt-1"
           />
         </div>
+
+        <GroupPicker groups={groups} value={groupId} onChange={setGroupId} disabled={busy} />
 
         <button
           type="submit"
