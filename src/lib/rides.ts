@@ -29,6 +29,19 @@ export const levelLabel: Record<RideLevel, string> = {
 
 export const ridesQueryKey = ["rides"] as const;
 
+/** spots === 0 oznacza wyprawę bez limitu miejsc */
+export function isUnlimited(spots: number) {
+  return !spots || spots <= 0;
+}
+
+export function spotsLabel(spots: number) {
+  return isUnlimited(spots) ? "bez limitu" : String(spots);
+}
+
+export function freeSpots(spots: number, taken: number) {
+  return isUnlimited(spots) ? Infinity : spots - taken;
+}
+
 export async function fetchRides(): Promise<Ride[]> {
   const [{ data: rides, error }, { data: profiles }] = await Promise.all([
     supabase

@@ -65,6 +65,7 @@ function EditRide() {
   const [time, setTime] = useState("");
   const [km, setKm] = useState("");
   const [spots, setSpots] = useState("");
+  const [unlimitedSpots, setUnlimitedSpots] = useState(false);
   const [description, setDescription] = useState("");
   const [level, setLevel] = useState<RideLevel>("chill");
   const [intercom, setIntercom] = useState(false);
@@ -88,7 +89,8 @@ function EditRide() {
     setDate(ride.date);
     setTime(ride.time);
     setKm(String(ride.km));
-    setSpots(String(ride.spots));
+    setUnlimitedSpots(ride.spots <= 0);
+    setSpots(ride.spots > 0 ? String(ride.spots) : "");
     setDescription(ride.description);
     setLevel(ride.level);
     setIntercom(ride.intercom);
@@ -186,7 +188,7 @@ function EditRide() {
         date,
         time,
         km: Number(km),
-        spots: Number(spots),
+        spots: unlimitedSpots ? 0 : Number(spots),
         description,
         level,
         intercom,
@@ -278,7 +280,25 @@ function EditRide() {
         </div>
         <div className="grid grid-cols-2 gap-3">
           <Field name="km" label="Dystans (km)" type="number" value={km} onChange={setKm} />
-          <Field name="spots" label="Miejsca" type="number" value={spots} onChange={setSpots} />
+          <div>
+            <Field
+              name="spots"
+              label="Miejsca"
+              type="number"
+              value={unlimitedSpots ? "" : spots}
+              onChange={setSpots}
+              disabled={unlimitedSpots}
+            />
+            <label className="mt-2 flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={unlimitedSpots}
+                onChange={(e) => setUnlimitedSpots(e.target.checked)}
+                className="h-4 w-4 accent-[hsl(var(--primary))]"
+              />
+              Bez limitu miejsc
+            </label>
+          </div>
         </div>
 
         <div className="rounded-lg border border-border bg-card p-4">
@@ -385,12 +405,14 @@ function Field({
   type = "text",
   value,
   onChange,
+  disabled,
 }: {
   name: string;
   label: string;
   type?: string;
   value: string;
   onChange: (value: string) => void;
+  disabled?: boolean;
 }) {
   return (
     <div>
@@ -404,7 +426,8 @@ function Field({
         id={name}
         name={name}
         type={type}
-        required
+        required={!disabled}
+        disabled={disabled}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className="input-moto mt-1"

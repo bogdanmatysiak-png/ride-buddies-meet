@@ -5,10 +5,13 @@ import { toast } from "sonner";
 import {
   fetchRides,
   formatDate,
+  freeSpots,
+  isUnlimited,
   joinRide,
   leaveRide,
   levelLabel,
   ridesQueryKey,
+  spotsLabel,
 } from "@/lib/rides";
 import { useIsAdmin, useSession } from "@/hooks/useAuth";
 import { RouteMap } from "@/components/RouteMap";
@@ -63,7 +66,7 @@ function RideDetail() {
     );
   }
 
-  const free = ride.spots - ride.riders.length;
+  const free = freeSpots(ride.spots, ride.riders.length);
   const joined = !!user && ride.riderIds.includes(user.id);
 
   return (
@@ -107,7 +110,12 @@ function RideDetail() {
           {ride.start} → {ride.end}
         </Fact>
         <Fact icon={<Users className="h-4 w-4" />} label="Ekipa">
-          {ride.riders.length}/{ride.spots} {free > 0 ? `(${free} wolne)` : "(pełna)"}
+          {ride.riders.length}/{spotsLabel(ride.spots)}{" "}
+          {isUnlimited(ride.spots)
+            ? "(bez limitu)"
+            : free > 0
+              ? `(${free} wolne)`
+              : "(pełna)"}
         </Fact>
         <Fact icon={<Users className="h-4 w-4" />} label="Interkom">
           {ride.intercom ? (ride.intercomType ? `Tak — ${ride.intercomType}` : "Tak") : "Nie"}
