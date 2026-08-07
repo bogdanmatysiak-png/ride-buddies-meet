@@ -3,6 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import heroImage from "@/assets/hero-ride.jpg";
 import { RideCard } from "@/components/RideCard";
+import { NearbyFilter } from "@/components/NearbyFilter";
+import { useNearbyRides } from "@/hooks/useNearbyRides";
 import { fetchRides, levelLabel, ridesQueryKey, type RideLevel } from "@/lib/rides";
 import { useSession } from "@/hooks/useAuth";
 
@@ -39,8 +41,15 @@ function Index() {
   });
   const { user } = useSession();
   const [filter, setFilter] = useState<RideLevel | "all">("all");
+  const nearby = useNearbyRides(rides.map((r) => r.start));
+  const radiusActive = Boolean(user && nearby.origin && nearby.radius);
   const visible = [...rides]
     .filter((r) => filter === "all" || r.level === filter)
+    .filter((r) => {
+      if (!radiusActive) return true;
+      const km = nearby.distanceFor(r.start);
+      return km !== null && km <= (nearby.radius ?? 0);
+    })
     .sort((a, b) => a.date.localeCompare(b.date));
 
   return (
