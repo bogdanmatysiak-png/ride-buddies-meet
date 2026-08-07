@@ -76,7 +76,7 @@ export function RideChat({
   }
 
   return (
-    <section className="mt-4 rounded-lg border border-border bg-card p-5">
+    <section id="czat" className="mt-4 rounded-lg border border-border bg-card p-5">
       <h2 className="flex items-center gap-2 text-2xl text-foreground">
         <MessageCircle className="h-5 w-5 text-primary" />
         Ustalenia ekipy

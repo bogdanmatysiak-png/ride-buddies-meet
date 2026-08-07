@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BellRing, Check, Trash2, Undo2 } from "lucide-react";
+import { ArrowUpRight, BellRing, Check, Trash2, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { useSession } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -179,9 +179,10 @@ function NotificationsPage() {
                     <Link
                       to="/wyprawa/$id"
                       params={{ id: n.rideId }}
-                      className="mt-2 inline-block text-xs font-semibold uppercase tracking-wider text-primary hover:underline"
+                      hash="czat"
+                      className="mt-2 inline-flex items-center gap-1 rounded-md border border-primary px-2.5 py-1.5 text-xs font-semibold uppercase tracking-wider text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
                     >
-                      Otwórz wyprawę
+                      Otwórz wyprawę <ArrowUpRight className="h-3.5 w-3.5" />
                     </Link>
                   )}
                 </div>

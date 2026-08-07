@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Bell } from "lucide-react";
+import { ArrowUpRight, Bell } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   fetchNotifications,
@@ -82,17 +82,17 @@ export function NotificationBell({ userId }: { userId: string }) {
             <ul className="max-h-80 divide-y divide-border overflow-y-auto">
               {items.map((n) => (
                 <li key={n.id} className="px-3 py-2.5">
-                  {n.rideId ? (
+                  <NotificationBody title={n.title} body={n.body} createdAt={n.createdAt} />
+                  {n.rideId && (
                     <Link
                       to="/wyprawa/$id"
                       params={{ id: n.rideId }}
+                      hash="czat"
                       onClick={() => setOpen(false)}
-                      className="block"
+                      className="mt-2 inline-flex items-center gap-1 rounded-md border border-primary px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
                     >
-                      <NotificationBody title={n.title} body={n.body} createdAt={n.createdAt} />
+                      Otwórz wyprawę <ArrowUpRight className="h-3 w-3" />
                     </Link>
-                  ) : (
-                    <NotificationBody title={n.title} body={n.body} createdAt={n.createdAt} />
                   )}
                 </li>
               ))}
