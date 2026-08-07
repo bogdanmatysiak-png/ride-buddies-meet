@@ -46,6 +46,7 @@ function NewRide() {
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
   const [km, setKm] = useState("");
+  const [spots, setSpots] = useState("10");
   const [plan, setPlan] = useState<RoutePlan | null>(null);
   const [planning, setPlanning] = useState(false);
   const [unlimitedSpots, setUnlimitedSpots] = useState(false);
@@ -198,6 +199,8 @@ function NewRide() {
               label="Miejsca"
               type="number"
               placeholder={unlimitedSpots ? "bez limitu" : "12"}
+              value={unlimitedSpots ? "" : spots}
+              onChange={setSpots}
               disabled={unlimitedSpots}
             />
             <label className="mt-2 flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
