@@ -14,6 +14,68 @@ export type Database = {
   }
   public: {
     Tables: {
+      group_members: {
+        Row: {
+          created_at: string
+          group_id: string
+          id: string
+          invited_by: string | null
+          status: Database["public"]["Enums"]["group_member_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          group_id: string
+          id?: string
+          invited_by?: string | null
+          status?: Database["public"]["Enums"]["group_member_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          group_id?: string
+          id?: string
+          invited_by?: string | null
+          status?: Database["public"]["Enums"]["group_member_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      groups: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          owner_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          owner_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          owner_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           body: string
@@ -204,6 +266,7 @@ export type Database = {
           created_at: string
           description: string
           end_point: string
+          group_id: string | null
           host_id: string | null
           host_name: string
           id: string
@@ -222,6 +285,7 @@ export type Database = {
           created_at?: string
           description?: string
           end_point: string
+          group_id?: string | null
           host_id?: string | null
           host_name: string
           id?: string
@@ -240,6 +304,7 @@ export type Database = {
           created_at?: string
           description?: string
           end_point?: string
+          group_id?: string | null
           host_id?: string | null
           host_name?: string
           id?: string
@@ -254,7 +319,15 @@ export type Database = {
           title?: string
           waypoints?: string[]
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "rides_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -282,6 +355,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      has_group_link: {
+        Args: { _group_id: string; _user_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -289,9 +366,18 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_group_member: {
+        Args: { _group_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_group_owner: {
+        Args: { _group_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
+      group_member_status: "pending" | "accepted"
       ride_level: "chill" | "sport" | "adventure"
     }
     CompositeTypes: {
@@ -421,6 +507,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user"],
+      group_member_status: ["pending", "accepted"],
       ride_level: ["chill", "sport", "adventure"],
     },
   },
