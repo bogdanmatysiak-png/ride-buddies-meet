@@ -14,6 +14,7 @@ import {
 import { planRoute } from "@/lib/maps.functions";
 import { RouteMap } from "@/components/RouteMap";
 import { RoutePrefsPicker } from "@/components/RoutePrefsPicker";
+import { WaypointsEditor } from "@/components/WaypointsEditor";
 import {
   defaultRoutePrefs,
   prefsFromProfile,
@@ -61,6 +62,7 @@ function EditRide() {
   const [title, setTitle] = useState("");
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
+  const [waypoints, setWaypoints] = useState<string[]>([]);
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [km, setKm] = useState("");
@@ -86,6 +88,7 @@ function EditRide() {
     setTitle(ride.title);
     setStart(ride.start);
     setEnd(ride.end);
+    setWaypoints(ride.waypoints ?? []);
     setDate(ride.date);
     setTime(ride.time);
     setKm(String(ride.km));
@@ -134,7 +137,7 @@ function EditRide() {
     setPlanning(true);
     try {
       const result = await computeRoute({
-        data: { start: start.trim(), end: end.trim(), ...prefs },
+        data: { start: start.trim(), end: end.trim(), waypoints, ...prefs },
       });
       setKm(String(result.km));
       setRecalculated(prefsSummary(prefs));
@@ -171,6 +174,13 @@ function EditRide() {
       if (prev && (start.trim() !== prev.start || end.trim() !== prev.end)) {
         changes.push(`nowa trasa: ${start.trim()} → ${end.trim()}`);
       }
+      if (prev && waypoints.join("|") !== (prev.waypoints ?? []).join("|")) {
+        changes.push(
+          waypoints.length > 0
+            ? `punkty przez: ${waypoints.join(" → ")}`
+            : "usunięto punkty pośrednie",
+        );
+      }
       if (prev && Number(km) !== prev.km) {
         changes.push(`dystans: ${prev.km} km → ${Number(km)} km`);
       }
@@ -185,6 +195,7 @@ function EditRide() {
         title,
         start,
         end,
+        waypoints,
         date,
         time,
         km: Number(km),
@@ -252,6 +263,11 @@ function EditRide() {
           <Field name="start" label="Zbiórka" value={start} onChange={setStart} />
           <Field name="end" label="Cel" value={end} onChange={setEnd} />
         </div>
+        {start.trim().length > 1 && end.trim().length > 1 && (
+          <div className="rounded-lg border border-border bg-card p-4">
+            <WaypointsEditor waypoints={waypoints} onChange={setWaypoints} />
+          </div>
+        )}
         <div className="rounded-lg border border-border bg-card p-4">
           <RoutePrefsPicker prefs={prefs} onChange={setPrefs} />
           <button
@@ -271,7 +287,7 @@ function EditRide() {
             {planning ? "Liczę trasę…" : "Przelicz trasę w Google Maps"}
           </button>
           {start.length > 1 && end.length > 1 && (
-            <RouteMap start={start} end={end} prefs={prefs} className="mt-3" />
+            <RouteMap start={start} end={end} waypoints={waypoints} prefs={prefs} className="mt-3" />
           )}
         </div>
         <div className="grid grid-cols-2 gap-3">
