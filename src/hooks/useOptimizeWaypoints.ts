@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { optimizeWaypoints, planRoute } from "@/lib/maps.functions";
+import { geocodeAddresses } from "@/lib/geo.functions";
 import type { RoutePrefs } from "@/lib/route-prefs";
 
 export type OptimizeMode = "fast" | "scenic";
@@ -44,12 +45,41 @@ export function useOptimizeWaypoints({
         avoidFerries: prefs.avoidFerries,
       };
       const clean = waypoints.map((w) => w.trim()).filter((w) => w.length > 1);
+
+      // Walidacja: sprawdzamy, czy Google potrafi zmapować punkty. Niezmapowane
+      // punkty pomijamy, żeby nie wysyłać requestu skazanego na brak trasy.
+      let valid = clean;
+      try {
+        const points = await geocodeAddresses({
+          data: { addresses: [start.trim(), end.trim(), ...clean] },
+        });
+        const mapped = new Set(points.map((p) => p.address));
+        if (!mapped.has(start.trim()) || !mapped.has(end.trim())) {
+          toast.error("Nie rozpoznaliśmy miejsca zbiórki lub celu — popraw je i spróbuj ponownie");
+          setComparison(null);
+          return;
+        }
+        valid = clean.filter((w) => mapped.has(w));
+        const skipped = clean.filter((w) => !mapped.has(w));
+        if (skipped.length > 0) {
+          toast.warning(`Pomijam nierozpoznane punkty: ${skipped.join(", ")}`);
+        }
+        if (valid.length < 2) {
+          toast.error("Zostało za mało poprawnych punktów „przez”, żeby ułożyć kolejność");
+          setComparison(null);
+          return;
+        }
+      } catch {
+        // Gdy walidacja jest niedostępna, próbujemy układać na oryginalnych punktach.
+        valid = clean;
+      }
+
       // Stan „przed” liczymy dla aktualnej kolejności punktów, tymi samymi ustawieniami.
       // Nie blokujemy układania, jeśli tego pomiaru nie da się wykonać.
       let before: OrderStats | null = null;
       try {
         const plan = await planRoute({
-          data: { start, end, waypoints: clean, curvy: false, ...avoid },
+          data: { start, end, waypoints: valid, curvy: false, ...avoid },
         });
         before = { km: plan.km, minutes: plan.minutes, turns: plan.turns };
       } catch {
@@ -59,7 +89,7 @@ export function useOptimizeWaypoints({
         data: {
           start,
           end,
-          waypoints: clean,
+          waypoints: valid,
           mode: nextMode,
           ...avoid,
         },
@@ -71,7 +101,7 @@ export function useOptimizeWaypoints({
               mode: nextMode,
               before,
               after: { km: result.km, minutes: result.minutes, turns: result.turns },
-              changed: result.waypoints.join("|") !== clean.join("|"),
+              changed: result.waypoints.join("|") !== valid.join("|"),
             }
           : null,
       );
