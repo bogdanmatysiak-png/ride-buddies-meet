@@ -1,7 +1,17 @@
 import { useState } from "react";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
+import type { OptimizeMode } from "@/hooks/useOptimizeWaypoints";
 
 export const MAX_WAYPOINTS = 20;
+
+const modes: Array<{ key: OptimizeMode; label: string; hint: string }> = [
+  { key: "fast", label: "Najszybsza", hint: "Kolejność pod najkrótszy czas jazdy" },
+  {
+    key: "scenic",
+    label: "Malownicza / kręta",
+    hint: "Bez autostrad i płatnych odcinków — więcej zakrętów i widoków",
+  },
+];
 
 /** Punkty pośrednie „przez” — dodawanie plusem, usuwanie i zmiana kolejności. */
 export function WaypointsEditor({
@@ -11,13 +21,17 @@ export function WaypointsEditor({
   onOptimize,
   optimizing,
   canOptimize,
+  mode = "fast",
+  onModeChange,
 }: {
   waypoints: string[];
   onChange: (next: string[]) => void;
   disabled?: boolean;
-  onOptimize?: () => void;
+  onOptimize?: (mode: OptimizeMode) => void;
   optimizing?: boolean;
   canOptimize?: boolean;
+  mode?: OptimizeMode;
+  onModeChange?: (mode: OptimizeMode) => void;
 }) {
   const [draft, setDraft] = useState("");
   const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -62,14 +76,39 @@ export function WaypointsEditor({
       </div>
 
       {onOptimize && (
-        <button
-          type="button"
-          onClick={onOptimize}
-          disabled={disabled || !canOptimize}
-          className="mt-2 w-full rounded-md border border-primary px-4 py-2 text-xs font-semibold uppercase tracking-wider text-primary transition-colors hover:bg-primary hover:text-primary-foreground disabled:opacity-50"
-        >
-          {optimizing ? "Układam kolejność…" : "Ułóż automatycznie (najszybsza trasa)"}
-        </button>
+        <div className="mt-2">
+          <div className="flex gap-2">
+            {modes.map((m) => (
+              <button
+                key={m.key}
+                type="button"
+                title={m.hint}
+                aria-pressed={mode === m.key}
+                disabled={disabled}
+                onClick={() => onModeChange?.(m.key)}
+                className={`flex-1 rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider transition-colors ${
+                  mode === m.key
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-card text-muted-foreground hover:border-primary/50"
+                }`}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => onOptimize(mode)}
+            disabled={disabled || !canOptimize}
+            className="mt-2 w-full rounded-md border border-primary px-4 py-2 text-xs font-semibold uppercase tracking-wider text-primary transition-colors hover:bg-primary hover:text-primary-foreground disabled:opacity-50"
+          >
+            {optimizing
+              ? "Układam kolejność…"
+              : mode === "scenic"
+                ? "Ułóż automatycznie (kręta trasa)"
+                : "Ułóż automatycznie (najszybsza trasa)"}
+          </button>
+        </div>
       )}
 
       {waypoints.length > 0 && (
