@@ -14,6 +14,8 @@ export function WaypointsEditor({
   disabled?: boolean;
 }) {
   const [draft, setDraft] = useState("");
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [overIndex, setOverIndex] = useState<number | null>(null);
   const full = waypoints.length >= MAX_WAYPOINTS;
 
   function add(value = draft) {
@@ -32,6 +34,16 @@ export function WaypointsEditor({
     onChange(next);
   }
 
+  function endDrag() {
+    setDragIndex(null);
+    setOverIndex(null);
+  }
+
+  function drop(to: number) {
+    if (dragIndex !== null && dragIndex !== to) move(dragIndex, to);
+    endDrag();
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between">
@@ -48,8 +60,55 @@ export function WaypointsEditor({
           {waypoints.map((w, i) => (
             <li
               key={`${w}-${i}`}
-              className="flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2"
+              draggable={!disabled}
+              data-wp-index={i}
+              onDragStart={(e) => {
+                setDragIndex(i);
+                e.dataTransfer.effectAllowed = "move";
+                e.dataTransfer.setData("text/plain", String(i));
+              }}
+              onDragOver={(e) => {
+                if (dragIndex === null) return;
+                e.preventDefault();
+                setOverIndex(i);
+              }}
+              onDragLeave={() => setOverIndex((prev) => (prev === i ? null : prev))}
+              onDrop={(e) => {
+                e.preventDefault();
+                drop(i);
+              }}
+              onDragEnd={endDrag}
+              className={`flex items-center gap-2 rounded-md border bg-background px-3 py-2 transition-colors ${
+                dragIndex === i
+                  ? "border-primary opacity-60"
+                  : overIndex === i
+                    ? "border-primary"
+                    : "border-border"
+              } ${disabled ? "" : "cursor-grab active:cursor-grabbing"}`}
             >
+              <span
+                aria-hidden
+                className="touch-none select-none text-sm text-muted-foreground"
+                onTouchStart={() => !disabled && setDragIndex(i)}
+                onTouchMove={(e) => {
+                  if (disabled || dragIndex === null) return;
+                  e.preventDefault();
+                  const t = e.touches[0];
+                  if (!t) return;
+                  const el = document
+                    .elementFromPoint(t.clientX, t.clientY)
+                    ?.closest("[data-wp-index]");
+                  const idx = el ? Number(el.getAttribute("data-wp-index")) : null;
+                  if (idx !== null && !Number.isNaN(idx)) setOverIndex(idx);
+                }}
+                onTouchEnd={() => {
+                  if (overIndex !== null) drop(overIndex);
+                  else endDrag();
+                }}
+                onTouchCancel={endDrag}
+              >
+                ⠿
+              </span>
               <span className="text-[11px] font-semibold uppercase tracking-wider text-primary">
                 przez {i + 1}
               </span>
@@ -118,7 +177,8 @@ export function WaypointsEditor({
         </button>
       )}
       <p className="mt-2 text-[11px] text-muted-foreground">
-        Wyszukaj miejsce i dodaj plusem, strzałkami zmień kolejność — trasa przelicza się na żywo.
+        Wyszukaj miejsce i dodaj plusem. Kolejność zmienisz przeciąganiem (uchwyt ⠿) albo
+        strzałkami ↑↓ — trasa przelicza się na żywo.
       </p>
     </div>
   );
