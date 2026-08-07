@@ -57,6 +57,19 @@ export async function deleteRideMessage(id: string) {
   if (error) throw error;
 }
 
+/** Ogłoszenie prowadzącego na czacie wyprawy — widzą je od razu wszyscy uczestnicy. */
+export const rideNoticePrefix = "📣 Aktualizacja trasy:";
+
+export async function sendRideUpdateNotice(
+  rideId: string,
+  hostId: string,
+  changes: string[],
+) {
+  if (changes.length === 0) return;
+  const body = `${rideNoticePrefix}\n${changes.map((c) => `• ${c}`).join("\n")}`;
+  await sendRideMessage(rideId, hostId, body);
+}
+
 export function formatMessageTime(iso: string) {
   return new Date(iso).toLocaleString("pl-PL", {
     day: "numeric",
