@@ -138,6 +138,7 @@ export const optimizeWaypoints = createServerFn({ method: "POST" })
       avoidHighways?: boolean;
       avoidTolls?: boolean;
       avoidFerries?: boolean;
+      mode?: "fast" | "scenic";
     }) =>
       z
         .object({
@@ -147,16 +148,23 @@ export const optimizeWaypoints = createServerFn({ method: "POST" })
           avoidHighways: z.boolean().default(true),
           avoidTolls: z.boolean().default(true),
           avoidFerries: z.boolean().default(true),
+          mode: z.enum(["fast", "scenic"]).default("fast"),
         })
         .parse(input),
   )
-  .handler(async ({ data }): Promise<{ waypoints: string[]; km: number; minutes: number }> => {
+  .handler(
+    async ({
+      data,
+    }): Promise<{ waypoints: string[]; km: number; minutes: number; turns: number }> => {
     const lovableKey = process.env["LOVABLE_API_KEY"];
     const mapsKey = process.env["GOOGLE_MAPS_API_KEY"];
     if (!lovableKey || !mapsKey) throw new Error("Brak konfiguracji Google Maps");
     if (data.waypoints.length < 2) {
       throw new Error("Dodaj co najmniej dwa punkty „przez”, żeby ułożyć kolejność");
     }
+    // Tryb malowniczy: zawsze bez autostrad i płatnych odcinków, żeby Google
+    // układał punkty pod lokalne, bardziej kręte drogi.
+    const scenic = data.mode === "scenic";
 
     const response = await fetch(
       "https://connector-gateway.lovable.dev/google_maps/routes/directions/v2:computeRoutes",
@@ -167,7 +175,7 @@ export const optimizeWaypoints = createServerFn({ method: "POST" })
           "X-Connection-Api-Key": mapsKey,
           "Content-Type": "application/json",
           "X-Goog-FieldMask":
-            "routes.distanceMeters,routes.duration,routes.optimizedIntermediateWaypointIndex",
+            "routes.distanceMeters,routes.duration,routes.optimizedIntermediateWaypointIndex,routes.legs.steps.navigationInstruction.maneuver",
         },
         body: JSON.stringify({
           origin: { address: data.start },
@@ -177,8 +185,8 @@ export const optimizeWaypoints = createServerFn({ method: "POST" })
           travelMode: "DRIVE",
           routingPreference: "TRAFFIC_UNAWARE",
           routeModifiers: {
-            avoidHighways: data.avoidHighways,
-            avoidTolls: data.avoidTolls,
+            avoidHighways: scenic ? true : data.avoidHighways,
+            avoidTolls: scenic ? true : data.avoidTolls,
             avoidFerries: data.avoidFerries,
           },
           languageCode: "pl-PL",
@@ -213,6 +221,7 @@ export const optimizeWaypoints = createServerFn({ method: "POST" })
         distanceMeters?: number;
         duration?: string;
         optimizedIntermediateWaypointIndex?: number[];
+        legs?: Array<{ steps?: Array<{ navigationInstruction?: { maneuver?: string } }> }>;
       }>;
     };
     const route = payload.routes?.[0];
@@ -224,9 +233,19 @@ export const optimizeWaypoints = createServerFn({ method: "POST" })
       order.length === data.waypoints.length
         ? order.map((i) => data.waypoints[i]!).filter(Boolean)
         : data.waypoints;
+    const turns = (route.legs ?? []).reduce(
+      (sum, leg) =>
+        sum +
+        (leg.steps ?? []).filter((s) =>
+          /TURN|ROUNDABOUT|FORK/.test(s.navigationInstruction?.maneuver ?? ""),
+        ).length,
+      0,
+    );
     return {
       waypoints: ordered,
       km: Math.round(route.distanceMeters / 1000),
       minutes: Math.round(Number(String(route.duration ?? "0s").replace("s", "")) / 60),
+      turns,
     };
-  });
+    },
+  );
