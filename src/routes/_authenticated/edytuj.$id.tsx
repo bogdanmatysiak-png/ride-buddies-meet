@@ -2,7 +2,6 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { useServerFn } from "@tanstack/react-start";
 import {
   deleteRide,
   fetchRides,
@@ -11,10 +10,11 @@ import {
   updateRide,
   type RideLevel,
 } from "@/lib/rides";
-import { planRoute } from "@/lib/maps.functions";
 import { RouteMap } from "@/components/RouteMap";
 import { RoutePrefsPicker } from "@/components/RoutePrefsPicker";
 import { WaypointsEditor } from "@/components/WaypointsEditor";
+import { PlaceSearchInput } from "@/components/PlaceSearchInput";
+import { useLiveRoute } from "@/hooks/useLiveRoute";
 import {
   defaultRoutePrefs,
   prefsFromProfile,
@@ -73,11 +73,22 @@ function EditRide() {
   const [intercom, setIntercom] = useState(false);
   const [intercomType, setIntercomType] = useState("");
   const [busy, setBusy] = useState(false);
-  const [planning, setPlanning] = useState(false);
   const [prefs, setPrefs] = useState<RoutePrefs>(defaultRoutePrefs);
   const [savingPrefs, setSavingPrefs] = useState(false);
   const [recalculated, setRecalculated] = useState<string | null>(null);
-  const computeRoute = useServerFn(planRoute);
+  const { plan, planning, error: planError, recalc } = useLiveRoute({
+    start,
+    end,
+    waypoints,
+    prefs,
+  });
+
+  useEffect(() => {
+    if (!plan) return;
+    setKm(String(plan.km));
+    setRecalculated(prefsSummary(prefs));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plan]);
 
   useEffect(() => {
     if (profile) setPrefs(prefsFromProfile(profile));
@@ -127,28 +138,6 @@ function EditRide() {
         </Link>
       </main>
     );
-  }
-
-  async function handlePlanRoute() {
-    if (start.trim().length < 2 || end.trim().length < 2) {
-      toast.error("Podaj miejsce zbiórki i cel");
-      return;
-    }
-    setPlanning(true);
-    try {
-      const result = await computeRoute({
-        data: { start: start.trim(), end: end.trim(), waypoints, ...prefs },
-      });
-      setKm(String(result.km));
-      setRecalculated(prefsSummary(prefs));
-      toast.success(
-        `Trasa wyznaczona: ${result.km} km, ok. ${Math.floor(result.minutes / 60)} h ${result.minutes % 60} min (${prefsSummary(prefs)})`,
-      );
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Nie udało się wyznaczyć trasy");
-    } finally {
-      setPlanning(false);
-    }
   }
 
   async function handleSavePrefs() {
@@ -260,8 +249,8 @@ function EditRide() {
       <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
         <Field name="title" label="Nazwa wyprawy" value={title} onChange={setTitle} />
         <div className="grid grid-cols-2 gap-3">
-          <Field name="start" label="Zbiórka" value={start} onChange={setStart} />
-          <Field name="end" label="Cel" value={end} onChange={setEnd} />
+          <Field name="start" label="Zbiórka" value={start} onChange={setStart} search />
+          <Field name="end" label="Cel" value={end} onChange={setEnd} search />
         </div>
         {start.trim().length > 1 && end.trim().length > 1 && (
           <div className="rounded-lg border border-border bg-card p-4">
@@ -280,12 +269,19 @@ function EditRide() {
           </button>
           <button
             type="button"
-            onClick={handlePlanRoute}
+            onClick={() => void recalc()}
             disabled={planning}
             className="mt-3 w-full rounded-md border border-primary px-4 py-2 text-xs font-semibold uppercase tracking-wider text-primary transition-colors hover:bg-primary hover:text-primary-foreground disabled:opacity-60"
           >
-            {planning ? "Liczę trasę…" : "Przelicz trasę w Google Maps"}
+            {planning ? "Liczę trasę na żywo…" : "Przelicz trasę teraz"}
           </button>
+          {planError && <p className="mt-2 text-xs text-destructive">{planError}</p>}
+          {plan && (
+            <p className="mt-3 text-sm text-muted-foreground">
+              {plan.km} km · ok. {Math.floor(plan.minutes / 60)} h {plan.minutes % 60} min jazdy ·{" "}
+              {plan.turns} zakrętów · {prefsSummary(prefs)}
+            </p>
+          )}
           {start.length > 1 && end.length > 1 && (
             <RouteMap start={start} end={end} waypoints={waypoints} prefs={prefs} className="mt-3" />
           )}
@@ -422,6 +418,7 @@ function Field({
   value,
   onChange,
   disabled,
+  search,
 }: {
   name: string;
   label: string;
@@ -429,6 +426,7 @@ function Field({
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
+  search?: boolean;
 }) {
   return (
     <div>
@@ -438,6 +436,17 @@ function Field({
       >
         {label}
       </label>
+      {search && onChange ? (
+        <PlaceSearchInput
+          id={name}
+          name={name}
+          value={value ?? ""}
+          onChange={onChange}
+          required={!disabled}
+          disabled={disabled}
+          className="mt-1"
+        />
+      ) : (
       <input
         id={name}
         name={name}
@@ -448,6 +457,7 @@ function Field({
         onChange={(e) => onChange(e.target.value)}
         className="input-moto mt-1"
       />
+      )}
     </div>
   );
 }

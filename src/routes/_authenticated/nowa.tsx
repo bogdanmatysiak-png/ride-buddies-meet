@@ -2,12 +2,12 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { useServerFn } from "@tanstack/react-start";
 import { createRide, levelLabel, ridesQueryKey, type RideLevel } from "@/lib/rides";
-import { planRoute, type RoutePlan } from "@/lib/maps.functions";
 import { RouteMap } from "@/components/RouteMap";
 import { RoutePrefsPicker } from "@/components/RoutePrefsPicker";
 import { WaypointsEditor } from "@/components/WaypointsEditor";
+import { PlaceSearchInput } from "@/components/PlaceSearchInput";
+import { useLiveRoute } from "@/hooks/useLiveRoute";
 import {
   defaultRoutePrefs,
   prefsFromProfile,
@@ -49,12 +49,19 @@ function NewRide() {
   const [waypoints, setWaypoints] = useState<string[]>([]);
   const [km, setKm] = useState("");
   const [spots, setSpots] = useState("10");
-  const [plan, setPlan] = useState<RoutePlan | null>(null);
-  const [planning, setPlanning] = useState(false);
   const [unlimitedSpots, setUnlimitedSpots] = useState(false);
   const [prefs, setPrefs] = useState<RoutePrefs>(defaultRoutePrefs);
   const [savingPrefs, setSavingPrefs] = useState(false);
-  const computeRoute = useServerFn(planRoute);
+  const { plan, planning, error: planError, recalc } = useLiveRoute({
+    start,
+    end,
+    waypoints,
+    prefs,
+  });
+
+  useEffect(() => {
+    if (plan) setKm(String(plan.km));
+  }, [plan]);
 
   useEffect(() => {
     if (profile) setPrefs(prefsFromProfile(profile));
@@ -71,28 +78,6 @@ function NewRide() {
       toast.error(error instanceof Error ? error.message : "Nie udało się zapisać preferencji");
     } finally {
       setSavingPrefs(false);
-    }
-  }
-
-  async function handlePlanRoute() {
-    if (start.trim().length < 2 || end.trim().length < 2) {
-      toast.error("Podaj miejsce zbiórki i cel");
-      return;
-    }
-    setPlanning(true);
-    try {
-      const result = await computeRoute({
-        data: { start: start.trim(), end: end.trim(), waypoints, ...prefs },
-      });
-      setPlan(result);
-      setKm(String(result.km));
-      toast.success(
-        `${result.km} km, ok. ${Math.floor(result.minutes / 60)} h ${result.minutes % 60} min, ${result.turns} zakrętów (${prefsSummary(prefs)})`,
-      );
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Nie udało się wyznaczyć trasy");
-    } finally {
-      setPlanning(false);
     }
   }
 
@@ -146,8 +131,9 @@ function NewRide() {
             placeholder="Kraków"
             value={start}
             onChange={setStart}
+            search
           />
-          <Field name="end" label="Cel" placeholder="Zakopane" value={end} onChange={setEnd} />
+          <Field name="end" label="Cel" placeholder="Zakopane" value={end} onChange={setEnd} search />
         </div>
         {start.trim().length > 1 && end.trim().length > 1 && (
           <div className="rounded-lg border border-border bg-card p-4">
@@ -166,12 +152,13 @@ function NewRide() {
           </button>
           <button
             type="button"
-            onClick={handlePlanRoute}
+            onClick={() => void recalc()}
             disabled={planning}
             className="mt-3 w-full rounded-md border border-primary px-4 py-2 text-xs font-semibold uppercase tracking-wider text-primary transition-colors hover:bg-primary hover:text-primary-foreground disabled:opacity-60"
           >
-            {planning ? "Liczę trasę…" : "Wyznacz trasę w Google Maps"}
+            {planning ? "Liczę trasę na żywo…" : "Przelicz trasę teraz"}
           </button>
+          {planError && <p className="mt-2 text-xs text-destructive">{planError}</p>}
           {plan && (
             <>
               <p className="mt-3 text-sm text-muted-foreground">
@@ -322,6 +309,7 @@ function Field({
   value,
   onChange,
   disabled,
+  search,
 }: {
   name: string;
   label: string;
@@ -330,6 +318,7 @@ function Field({
   value?: string;
   onChange?: (value: string) => void;
   disabled?: boolean;
+  search?: boolean;
 }) {
   return (
     <div>
@@ -339,6 +328,18 @@ function Field({
       >
         {label}
       </label>
+      {search && onChange ? (
+        <PlaceSearchInput
+          id={name}
+          name={name}
+          value={value ?? ""}
+          onChange={onChange}
+          placeholder={placeholder}
+          required={!disabled}
+          disabled={disabled}
+          className="mt-1"
+        />
+      ) : (
       <input
         id={name}
         name={name}
@@ -349,6 +350,7 @@ function Field({
         {...(onChange ? { value: value ?? "", onChange: (e) => onChange(e.target.value) } : {})}
         className="input-moto mt-1"
       />
+      )}
     </div>
   );
 }

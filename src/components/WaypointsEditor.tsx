@@ -1,8 +1,9 @@
 import { useState } from "react";
+import { PlaceSearchInput } from "@/components/PlaceSearchInput";
 
 export const MAX_WAYPOINTS = 20;
 
-/** Punkty pośrednie „przez” — dodawane pojedynczo plusem, maks. 20. */
+/** Punkty pośrednie „przez” — dodawanie plusem, usuwanie i zmiana kolejności. */
 export function WaypointsEditor({
   waypoints,
   onChange,
@@ -15,11 +16,20 @@ export function WaypointsEditor({
   const [draft, setDraft] = useState("");
   const full = waypoints.length >= MAX_WAYPOINTS;
 
-  function add() {
-    const value = draft.trim();
-    if (!value || full) return;
-    onChange([...waypoints, value]);
+  function add(value = draft) {
+    const clean = value.trim();
+    if (clean.length < 2 || full) return;
+    onChange([...waypoints, clean]);
     setDraft("");
+  }
+
+  function move(from: number, to: number) {
+    if (to < 0 || to >= waypoints.length) return;
+    const next = [...waypoints];
+    const [item] = next.splice(from, 1);
+    if (item === undefined) return;
+    next.splice(to, 0, item);
+    onChange(next);
   }
 
   return (
@@ -44,38 +54,52 @@ export function WaypointsEditor({
                 przez {i + 1}
               </span>
               <span className="flex-1 truncate text-sm text-foreground">{w}</span>
-              <button
-                type="button"
-                disabled={disabled}
-                onClick={() => onChange(waypoints.filter((_, idx) => idx !== i))}
-                aria-label={`Usuń punkt ${w}`}
-                className="rounded-md border border-border px-2 text-sm text-muted-foreground transition-colors hover:border-destructive hover:text-destructive"
-              >
-                −
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  disabled={disabled || i === 0}
+                  onClick={() => move(i, i - 1)}
+                  aria-label={`Przenieś ${w} wyżej`}
+                  className="rounded-md border border-border px-2 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary disabled:opacity-30"
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  disabled={disabled || i === waypoints.length - 1}
+                  onClick={() => move(i, i + 1)}
+                  aria-label={`Przenieś ${w} niżej`}
+                  className="rounded-md border border-border px-2 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary disabled:opacity-30"
+                >
+                  ↓
+                </button>
+                <button
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => onChange(waypoints.filter((_, idx) => idx !== i))}
+                  aria-label={`Usuń punkt ${w}`}
+                  className="rounded-md border border-border px-2 text-sm text-muted-foreground transition-colors hover:border-destructive hover:text-destructive"
+                >
+                  ✕
+                </button>
+              </div>
             </li>
           ))}
         </ul>
       )}
 
       <div className="mt-2 flex gap-2">
-        <input
+        <PlaceSearchInput
           value={draft}
+          onChange={setDraft}
+          onPick={(picked) => add(picked)}
           disabled={disabled || full}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              add();
-            }
-          }}
           placeholder={full ? "Osiągnięto limit 20 punktów" : "np. Nowy Targ"}
-          aria-label="Dodaj punkt przez"
-          className="input-moto"
+          className="flex-1"
         />
         <button
           type="button"
-          onClick={add}
+          onClick={() => add()}
           disabled={disabled || full || draft.trim().length < 2}
           aria-label="Dodaj punkt przez"
           className="shrink-0 rounded-md border border-primary px-4 text-lg font-semibold text-primary transition-colors hover:bg-primary hover:text-primary-foreground disabled:opacity-50"
@@ -83,8 +107,18 @@ export function WaypointsEditor({
           +
         </button>
       </div>
+      {waypoints.length > 0 && (
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => onChange([])}
+          className="mt-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground underline-offset-4 hover:text-destructive hover:underline"
+        >
+          Usuń wszystkie punkty
+        </button>
+      )}
       <p className="mt-2 text-[11px] text-muted-foreground">
-        Dodawaj po jednym miejscu — trasa poprowadzi kolejno przez te punkty.
+        Wyszukaj miejsce i dodaj plusem, strzałkami zmień kolejność — trasa przelicza się na żywo.
       </p>
     </div>
   );
