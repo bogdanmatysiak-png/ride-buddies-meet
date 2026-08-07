@@ -43,26 +43,38 @@ export function useOptimizeWaypoints({
         avoidTolls: scenic ? true : prefs.avoidTolls,
         avoidFerries: prefs.avoidFerries,
       };
+      const clean = waypoints.map((w) => w.trim()).filter((w) => w.length > 1);
       // Stan „przed” liczymy dla aktualnej kolejności punktów, tymi samymi ustawieniami.
-      const before = await planRoute({
-        data: { start, end, waypoints, curvy: false, ...avoid },
-      });
+      // Nie blokujemy układania, jeśli tego pomiaru nie da się wykonać.
+      let before: OrderStats | null = null;
+      try {
+        const plan = await planRoute({
+          data: { start, end, waypoints: clean, curvy: false, ...avoid },
+        });
+        before = { km: plan.km, minutes: plan.minutes, turns: plan.turns };
+      } catch {
+        before = null;
+      }
       const result = await optimizeWaypoints({
         data: {
           start,
           end,
-          waypoints,
+          waypoints: clean,
           mode: nextMode,
           ...avoid,
         },
       });
       onChange(result.waypoints);
-      setComparison({
-        mode: nextMode,
-        before: { km: before.km, minutes: before.minutes, turns: before.turns },
-        after: { km: result.km, minutes: result.minutes, turns: result.turns },
-        changed: result.waypoints.join("|") !== waypoints.join("|"),
-      });
+      setComparison(
+        before
+          ? {
+              mode: nextMode,
+              before,
+              after: { km: result.km, minutes: result.minutes, turns: result.turns },
+              changed: result.waypoints.join("|") !== clean.join("|"),
+            }
+          : null,
+      );
       toast.success(
         `${nextMode === "scenic" ? "Malownicza" : "Najszybsza"} kolejność: ${result.km} km, ok. ${Math.floor(
           result.minutes / 60,
