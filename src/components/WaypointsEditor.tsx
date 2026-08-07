@@ -8,10 +8,16 @@ export function WaypointsEditor({
   waypoints,
   onChange,
   disabled,
+  onOptimize,
+  optimizing,
+  canOptimize,
 }: {
   waypoints: string[];
   onChange: (next: string[]) => void;
   disabled?: boolean;
+  onOptimize?: () => void;
+  optimizing?: boolean;
+  canOptimize?: boolean;
 }) {
   const [draft, setDraft] = useState("");
   const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -54,6 +60,17 @@ export function WaypointsEditor({
           {waypoints.length}/{MAX_WAYPOINTS}
         </span>
       </div>
+
+      {onOptimize && (
+        <button
+          type="button"
+          onClick={onOptimize}
+          disabled={disabled || !canOptimize}
+          className="mt-2 w-full rounded-md border border-primary px-4 py-2 text-xs font-semibold uppercase tracking-wider text-primary transition-colors hover:bg-primary hover:text-primary-foreground disabled:opacity-50"
+        >
+          {optimizing ? "Układam kolejność…" : "Ułóż automatycznie (najszybsza trasa)"}
+        </button>
+      )}
 
       {waypoints.length > 0 && (
         <ul className="mt-2 space-y-2">
