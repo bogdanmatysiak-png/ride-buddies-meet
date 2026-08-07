@@ -96,6 +96,13 @@ export function NotificationBell({ userId }: { userId: string }) {
               ))}
             </ul>
           )}
+          <Link
+            to="/powiadomienia"
+            onClick={() => setOpen(false)}
+            className="block border-t border-border px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-primary hover:underline"
+          >
+            Zobacz wszystkie powiadomienia
+          </Link>
         </div>
       )}
     </div>

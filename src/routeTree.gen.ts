@@ -15,6 +15,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as RankingRouteImport } from './routes/ranking'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedNowaRouteImport } from './routes/_authenticated/nowa'
+import { Route as AuthenticatedPowiadomieniaRouteImport } from './routes/_authenticated/powiadomienia'
 import { Route as AuthenticatedProfilRouteImport } from './routes/_authenticated/profil'
 import { Route as MotocyklistaIdRouteImport } from './routes/motocyklista.$id'
 import { Route as WyprawaIdRouteImport } from './routes/wyprawa.$id'
@@ -49,6 +50,12 @@ const AuthenticatedNowaRoute = AuthenticatedNowaRouteImport.update({
   path: '/nowa',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedPowiadomieniaRoute =
+  AuthenticatedPowiadomieniaRouteImport.update({
+    id: '/powiadomienia',
+    path: '/powiadomienia',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedProfilRoute = AuthenticatedProfilRouteImport.update({
   id: '/profil',
   path: '/profil',
@@ -76,6 +83,7 @@ export interface FileRoutesByFullPath {
   '/ranking': typeof RankingRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/nowa': typeof AuthenticatedNowaRoute
+  '/powiadomienia': typeof AuthenticatedPowiadomieniaRoute
   '/profil': typeof AuthenticatedProfilRoute
   '/motocyklista/$id': typeof MotocyklistaIdRoute
   '/wyprawa/$id': typeof WyprawaIdRoute
@@ -87,6 +95,7 @@ export interface FileRoutesByTo {
   '/ranking': typeof RankingRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/nowa': typeof AuthenticatedNowaRoute
+  '/powiadomienia': typeof AuthenticatedPowiadomieniaRoute
   '/profil': typeof AuthenticatedProfilRoute
   '/motocyklista/$id': typeof MotocyklistaIdRoute
   '/wyprawa/$id': typeof WyprawaIdRoute
@@ -100,6 +109,7 @@ export interface FileRoutesById {
   '/ranking': typeof RankingRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/nowa': typeof AuthenticatedNowaRoute
+  '/_authenticated/powiadomienia': typeof AuthenticatedPowiadomieniaRoute
   '/_authenticated/profil': typeof AuthenticatedProfilRoute
   '/motocyklista/$id': typeof MotocyklistaIdRoute
   '/wyprawa/$id': typeof WyprawaIdRoute
@@ -113,6 +123,7 @@ export interface FileRouteTypes {
     | '/ranking'
     | '/admin'
     | '/nowa'
+    | '/powiadomienia'
     | '/profil'
     | '/motocyklista/$id'
     | '/wyprawa/$id'
@@ -124,6 +135,7 @@ export interface FileRouteTypes {
     | '/ranking'
     | '/admin'
     | '/nowa'
+    | '/powiadomienia'
     | '/profil'
     | '/motocyklista/$id'
     | '/wyprawa/$id'
@@ -136,6 +148,7 @@ export interface FileRouteTypes {
     | '/ranking'
     | '/_authenticated/admin'
     | '/_authenticated/nowa'
+    | '/_authenticated/powiadomienia'
     | '/_authenticated/profil'
     | '/motocyklista/$id'
     | '/wyprawa/$id'
@@ -195,6 +208,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedNowaRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/powiadomienia': {
+      id: '/_authenticated/powiadomienia'
+      path: '/powiadomienia'
+      fullPath: '/powiadomienia'
+      preLoaderRoute: typeof AuthenticatedPowiadomieniaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/profil': {
       id: '/_authenticated/profil'
       path: '/profil'
@@ -229,6 +249,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
   AuthenticatedNowaRoute: typeof AuthenticatedNowaRoute
+  AuthenticatedPowiadomieniaRoute: typeof AuthenticatedPowiadomieniaRoute
   AuthenticatedProfilRoute: typeof AuthenticatedProfilRoute
   AuthenticatedEdytujIdRoute: typeof AuthenticatedEdytujIdRoute
 }
@@ -236,6 +257,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
   AuthenticatedNowaRoute: AuthenticatedNowaRoute,
+  AuthenticatedPowiadomieniaRoute: AuthenticatedPowiadomieniaRoute,
   AuthenticatedProfilRoute: AuthenticatedProfilRoute,
   AuthenticatedEdytujIdRoute: AuthenticatedEdytujIdRoute,
 }
@@ -254,13 +276,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
