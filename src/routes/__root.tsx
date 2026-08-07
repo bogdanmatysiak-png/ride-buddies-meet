@@ -15,6 +15,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession, useIsAdmin } from "@/hooks/useAuth";
+import { NotificationBell } from "@/components/NotificationBell";
 
 function NotFoundComponent() {
   return (
@@ -200,6 +201,7 @@ function AuthNav() {
 
   return (
     <nav className="flex items-center gap-2">
+      <NotificationBell userId={session.user.id} />
       <Link
         to="/ranking"
         className="text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-primary"
