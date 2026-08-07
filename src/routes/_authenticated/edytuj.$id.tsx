@@ -385,12 +385,14 @@ function Field({
   type = "text",
   value,
   onChange,
+  disabled,
 }: {
   name: string;
   label: string;
   type?: string;
   value: string;
   onChange: (value: string) => void;
+  disabled?: boolean;
 }) {
   return (
     <div>
@@ -404,7 +406,8 @@ function Field({
         id={name}
         name={name}
         type={type}
-        required
+        required={!disabled}
+        disabled={disabled}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className="input-moto mt-1"
