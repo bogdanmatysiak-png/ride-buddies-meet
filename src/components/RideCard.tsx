@@ -5,9 +5,11 @@ import { formatDate, levelLabel, type Ride } from "@/lib/rides";
 export function RideCard({
   ride,
   currentUserId,
+  distanceKm,
 }: {
   ride: Ride;
   currentUserId?: string | null;
+  distanceKm?: number | null;
 }) {
   const free = ride.spots - ride.riders.length;
   const joined = !!currentUserId && ride.riderIds.includes(currentUserId);
@@ -39,6 +41,11 @@ export function RideCard({
           <Users className="h-4 w-4 text-primary/80" />
           {ride.riders.length}/{ride.spots}
         </span>
+        {typeof distanceKm === "number" && (
+          <span className="inline-flex items-center gap-1.5 text-primary">
+            ~{distanceKm} km od Ciebie
+          </span>
+        )}
       </div>
       <p className="mt-3 text-xs uppercase tracking-wider text-muted-foreground">
         Prowadzi {ride.host} ·{" "}
