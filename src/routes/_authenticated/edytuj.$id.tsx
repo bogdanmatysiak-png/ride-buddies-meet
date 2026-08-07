@@ -22,6 +22,7 @@ import {
   type RoutePrefs,
 } from "@/lib/route-prefs";
 import { useIsAdmin, useProfile, useSession } from "@/hooks/useAuth";
+import { rideMessagesQueryKey, sendRideUpdateNotice } from "@/lib/chat";
 
 export const Route = createFileRoute("/_authenticated/edytuj/$id")({
   head: () => ({
@@ -71,6 +72,7 @@ function EditRide() {
   const [planning, setPlanning] = useState(false);
   const [prefs, setPrefs] = useState<RoutePrefs>(defaultRoutePrefs);
   const [savingPrefs, setSavingPrefs] = useState(false);
+  const [recalculated, setRecalculated] = useState<string | null>(null);
   const computeRoute = useServerFn(planRoute);
 
   useEffect(() => {
@@ -132,6 +134,7 @@ function EditRide() {
         data: { start: start.trim(), end: end.trim(), ...prefs },
       });
       setKm(String(result.km));
+      setRecalculated(prefsSummary(prefs));
       toast.success(
         `Trasa wyznaczona: ${result.km} km, ok. ${Math.floor(result.minutes / 60)} h ${result.minutes % 60} min (${prefsSummary(prefs)})`,
       );
@@ -160,6 +163,20 @@ function EditRide() {
     e.preventDefault();
     setBusy(true);
     try {
+      const changes: string[] = [];
+      if (start.trim() !== ride.start || end.trim() !== ride.end) {
+        changes.push(`nowa trasa: ${start.trim()} → ${end.trim()}`);
+      }
+      if (Number(km) !== ride.km) {
+        changes.push(`dystans: ${ride.km} km → ${Number(km)} km`);
+      }
+      if (date !== ride.date || time !== ride.time) {
+        changes.push(`zbiórka: ${date}, ${time}`);
+      }
+      if (recalculated) {
+        changes.push(`preferencje trasy: ${recalculated}`);
+      }
+
       await updateRide(id, {
         title,
         start,
@@ -174,6 +191,15 @@ function EditRide() {
         intercomType: intercomType.trim(),
       });
       await queryClient.invalidateQueries({ queryKey: ridesQueryKey });
+      if (user && changes.length > 0) {
+        try {
+          await sendRideUpdateNotice(id, user.id, changes);
+          await queryClient.invalidateQueries({ queryKey: rideMessagesQueryKey(id) });
+          toast.success("Powiadomiłem uczestników o zmianach na czacie wyprawy");
+        } catch {
+          toast.error("Zmiany zapisane, ale nie udało się powiadomić uczestników");
+        }
+      }
       toast.success("Wyprawa zaktualizowana");
       navigate({ to: "/wyprawa/$id", params: { id } });
     } catch (error) {
