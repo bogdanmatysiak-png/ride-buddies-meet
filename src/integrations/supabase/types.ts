@@ -216,6 +216,7 @@ export type Database = {
           spots: number
           start_point: string
           title: string
+          waypoints: string[]
         }
         Insert: {
           created_at?: string
@@ -233,6 +234,7 @@ export type Database = {
           spots?: number
           start_point: string
           title: string
+          waypoints?: string[]
         }
         Update: {
           created_at?: string
@@ -250,6 +252,7 @@ export type Database = {
           spots?: number
           start_point?: string
           title?: string
+          waypoints?: string[]
         }
         Relationships: []
       }

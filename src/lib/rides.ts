@@ -9,6 +9,7 @@ export type Ride = {
   title: string;
   start: string;
   end: string;
+  waypoints: string[];
   date: string;
   time: string;
   km: number;
@@ -63,6 +64,7 @@ export async function fetchRides(): Promise<Ride[]> {
       title: r.title,
       start: r.start_point,
       end: r.end_point,
+      waypoints: r.waypoints ?? [],
       date: r.ride_date,
       time: r.ride_time,
       km: r.km,
@@ -97,6 +99,7 @@ export type NewRideInput = {
   title: string;
   start: string;
   end: string;
+  waypoints: string[];
   date: string;
   time: string;
   km: number;
@@ -119,6 +122,7 @@ export async function createRide(
       title: input.title,
       start_point: input.start,
       end_point: input.end,
+      waypoints: input.waypoints,
       ride_date: input.date,
       ride_time: input.time,
       km: input.km,
@@ -152,6 +156,7 @@ export async function updateRide(rideId: string, input: NewRideInput) {
       title: input.title,
       start_point: input.start,
       end_point: input.end,
+      waypoints: input.waypoints,
       ride_date: input.date,
       ride_time: input.time,
       km: input.km,

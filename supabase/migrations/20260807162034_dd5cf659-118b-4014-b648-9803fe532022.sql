@@ -1,0 +1,1 @@
+ALTER TABLE public.rides ADD COLUMN IF NOT EXISTS waypoints text[] NOT NULL DEFAULT '{}';

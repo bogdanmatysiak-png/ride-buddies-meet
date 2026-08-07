@@ -6,6 +6,7 @@ const GATEWAY_URL = "https://connector-gateway.lovable.dev/google_maps";
 const schema = z.object({
   start: z.string().min(2).max(120),
   end: z.string().min(2).max(120),
+  waypoints: z.array(z.string().min(2).max(120)).max(20).default([]),
   curvy: z.boolean().default(true),
   avoidHighways: z.boolean().default(true),
   avoidTolls: z.boolean().default(true),
@@ -17,6 +18,7 @@ export type RoutePlan = {
   minutes: number;
   startAddress: string;
   endAddress: string;
+  waypoints: string[];
   turns: number;
 };
 
@@ -25,6 +27,7 @@ export const planRoute = createServerFn({ method: "POST" })
     (input: {
       start: string;
       end: string;
+      waypoints?: string[];
       curvy?: boolean;
       avoidHighways?: boolean;
       avoidTolls?: boolean;
@@ -50,6 +53,7 @@ export const planRoute = createServerFn({ method: "POST" })
       body: JSON.stringify({
         origin: { address: data.start },
         destination: { address: data.end },
+        intermediates: data.waypoints.map((address) => ({ address })),
         travelMode: "DRIVE",
         routingPreference: "TRAFFIC_UNAWARE",
         computeAlternativeRoutes: true,
@@ -120,6 +124,7 @@ export const planRoute = createServerFn({ method: "POST" })
       minutes: Math.round(seconds / 60),
       startAddress: data.start,
       endAddress: data.end,
+      waypoints: data.waypoints,
       turns: countTurns(route),
     };
   });

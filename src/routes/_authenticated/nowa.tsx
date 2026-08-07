@@ -7,6 +7,7 @@ import { createRide, levelLabel, ridesQueryKey, type RideLevel } from "@/lib/rid
 import { planRoute, type RoutePlan } from "@/lib/maps.functions";
 import { RouteMap } from "@/components/RouteMap";
 import { RoutePrefsPicker } from "@/components/RoutePrefsPicker";
+import { WaypointsEditor } from "@/components/WaypointsEditor";
 import {
   defaultRoutePrefs,
   prefsFromProfile,
@@ -45,6 +46,7 @@ function NewRide() {
   const [busy, setBusy] = useState(false);
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
+  const [waypoints, setWaypoints] = useState<string[]>([]);
   const [km, setKm] = useState("");
   const [spots, setSpots] = useState("10");
   const [plan, setPlan] = useState<RoutePlan | null>(null);
@@ -80,7 +82,7 @@ function NewRide() {
     setPlanning(true);
     try {
       const result = await computeRoute({
-        data: { start: start.trim(), end: end.trim(), ...prefs },
+        data: { start: start.trim(), end: end.trim(), waypoints, ...prefs },
       });
       setPlan(result);
       setKm(String(result.km));
@@ -114,6 +116,7 @@ function NewRide() {
                 title: String(f.get("title")),
                 start: String(f.get("start")),
                 end: String(f.get("end")),
+                waypoints,
                 date: String(f.get("date")),
                 time: String(f.get("time")),
                 km: Number(f.get("km")),
@@ -146,6 +149,11 @@ function NewRide() {
           />
           <Field name="end" label="Cel" placeholder="Zakopane" value={end} onChange={setEnd} />
         </div>
+        {start.trim().length > 1 && end.trim().length > 1 && (
+          <div className="rounded-lg border border-border bg-card p-4">
+            <WaypointsEditor waypoints={waypoints} onChange={setWaypoints} />
+          </div>
+        )}
         <div className="rounded-lg border border-border bg-card p-4">
           <RoutePrefsPicker prefs={prefs} onChange={setPrefs} />
           <button
@@ -174,6 +182,7 @@ function NewRide() {
               <RouteMap
                 start={plan.startAddress}
                 end={plan.endAddress}
+                waypoints={plan.waypoints}
                 prefs={prefs}
                 className="mt-3"
               />

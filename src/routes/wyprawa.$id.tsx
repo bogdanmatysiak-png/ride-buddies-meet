@@ -107,7 +107,7 @@ function RideDetail() {
           {ride.km} km
         </Fact>
         <Fact icon={<MapPin className="h-4 w-4" />} label="Trasa">
-          {ride.start} → {ride.end}
+          {[ride.start, ...(ride.waypoints ?? []), ride.end].join(" → ")}
         </Fact>
         <Fact icon={<Users className="h-4 w-4" />} label="Ekipa">
           {ride.riders.length}/{spotsLabel(ride.spots)}{" "}
@@ -127,7 +127,18 @@ function RideDetail() {
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
           {ride.description}
         </p>
-        <RouteMap start={ride.start} end={ride.end} className="mt-4" />
+        {(ride.waypoints ?? []).length > 0 && (
+          <p className="mt-3 text-sm text-muted-foreground">
+            <span className="font-semibold text-primary">Przez: </span>
+            {ride.waypoints.join(" · ")}
+          </p>
+        )}
+        <RouteMap
+          start={ride.start}
+          end={ride.end}
+          waypoints={ride.waypoints ?? []}
+          className="mt-4"
+        />
         <p className="mt-2 text-xs text-muted-foreground">
           Trasa wyznaczana bez autostrad i dróg ekspresowych — wybieramy wariant z największą
           liczbą zakrętów i widoków.
@@ -137,7 +148,11 @@ function RideDetail() {
             ride.start,
           )}&destination=${encodeURIComponent(
             ride.end,
-          )}&travelmode=driving&avoid=highways|tolls|ferries`}
+          )}${
+            (ride.waypoints ?? []).length
+              ? `&waypoints=${ride.waypoints.map((w) => encodeURIComponent(w)).join("|")}`
+              : ""
+          }&travelmode=driving&avoid=highways|tolls|ferries`}
           target="_blank"
           rel="noreferrer"
           className="mt-3 inline-block text-xs font-semibold uppercase tracking-wider text-primary"
