@@ -303,6 +303,8 @@ function NewRide() {
             htmlFor="description"
             className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"
           >
+            className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"
+          >
             Opis
           </label>
           <textarea
