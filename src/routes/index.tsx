@@ -115,9 +115,28 @@ function Index() {
             </button>
           ))}
         </div>
+        {user && (
+          <NearbyFilter
+            originLabel={nearby.originLabel}
+            radius={nearby.radius}
+            error={nearby.error}
+            isLoading={nearby.isLoading}
+            hasOrigin={Boolean(nearby.origin)}
+            onRadius={nearby.setRadius}
+            onCoords={nearby.setOriginFromCoords}
+            onAddress={nearby.setOriginFromAddress}
+            onError={nearby.setError}
+            onClear={nearby.clearOrigin}
+          />
+        )}
         <div className="mt-5 space-y-3">
           {visible.map((ride) => (
-            <RideCard key={ride.id} ride={ride} currentUserId={user?.id ?? null} />
+            <RideCard
+              key={ride.id}
+              ride={ride}
+              currentUserId={user?.id ?? null}
+              distanceKm={radiusActive ? nearby.distanceFor(ride.start) : null}
+            />
           ))}
           {isLoading && (
             <p className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
@@ -126,7 +145,9 @@ function Index() {
           )}
           {!isLoading && visible.length === 0 && (
             <p className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-              Brak wypraw w tej kategorii. Może ogłosisz swoją?
+              {radiusActive
+                ? `Brak wypraw startujących do ${nearby.radius} km od wskazanego miejsca.`
+                : "Brak wypraw w tej kategorii. Może ogłosisz swoją?"}
             </p>
           )}
         </div>
