@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { geocodeAddresses } from "@/lib/geo.functions";
@@ -7,6 +7,8 @@ import {
   distanceKm,
   readGeoCache,
   writeGeoCache,
+  readStoredOrigin,
+  writeStoredOrigin,
   type Coords,
   type RadiusOption,
 } from "@/lib/geo";
@@ -17,6 +19,19 @@ export function useNearbyRides(addresses: string[]) {
   const [originLabel, setOriginLabel] = useState("");
   const [radius, setRadius] = useState<RadiusOption | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // przywracamy ostatnio wybrany punkt i promień (tylko po hydracji)
+  useEffect(() => {
+    const stored = readStoredOrigin();
+    if (!stored) return;
+    setOrigin(stored.coords);
+    setOriginLabel(stored.label);
+    setRadius(stored.radius);
+  }, []);
+
+  useEffect(() => {
+    if (origin) writeStoredOrigin({ coords: origin, label: originLabel, radius });
+  }, [origin, originLabel, radius]);
 
   const unique = Array.from(new Set(addresses.map((a) => a.trim()).filter(Boolean))).sort();
   const enabled = Boolean(origin && radius) && unique.length > 0;
@@ -90,6 +105,7 @@ export function useNearbyRides(addresses: string[]) {
     setOriginLabel("");
     setRadius(null);
     setError(null);
+    writeStoredOrigin(null);
   }, []);
 
   return {
