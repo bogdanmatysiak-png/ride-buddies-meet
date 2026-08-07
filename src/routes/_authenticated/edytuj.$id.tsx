@@ -15,6 +15,7 @@ import { RoutePrefsPicker } from "@/components/RoutePrefsPicker";
 import { WaypointsEditor } from "@/components/WaypointsEditor";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
 import { useLiveRoute } from "@/hooks/useLiveRoute";
+import { useOptimizeWaypoints } from "@/hooks/useOptimizeWaypoints";
 import {
   defaultRoutePrefs,
   prefsFromProfile,
@@ -81,6 +82,13 @@ function EditRide() {
     end,
     waypoints,
     prefs,
+  });
+  const { optimize, optimizing, canOptimize } = useOptimizeWaypoints({
+    start,
+    end,
+    waypoints,
+    prefs,
+    onChange: setWaypoints,
   });
 
   useEffect(() => {
@@ -254,7 +262,13 @@ function EditRide() {
         </div>
         {start.trim().length > 1 && end.trim().length > 1 && (
           <div className="rounded-lg border border-border bg-card p-4">
-            <WaypointsEditor waypoints={waypoints} onChange={setWaypoints} />
+            <WaypointsEditor
+              waypoints={waypoints}
+              onChange={setWaypoints}
+              onOptimize={() => void optimize()}
+              optimizing={optimizing}
+              canOptimize={canOptimize}
+            />
           </div>
         )}
         <div className="rounded-lg border border-border bg-card p-4">
