@@ -164,13 +164,14 @@ function EditRide() {
     setBusy(true);
     try {
       const changes: string[] = [];
-      if (start.trim() !== ride.start || end.trim() !== ride.end) {
+      const prev = ride;
+      if (prev && (start.trim() !== prev.start || end.trim() !== prev.end)) {
         changes.push(`nowa trasa: ${start.trim()} → ${end.trim()}`);
       }
-      if (Number(km) !== ride.km) {
-        changes.push(`dystans: ${ride.km} km → ${Number(km)} km`);
+      if (prev && Number(km) !== prev.km) {
+        changes.push(`dystans: ${prev.km} km → ${Number(km)} km`);
       }
-      if (date !== ride.date || time !== ride.time) {
+      if (prev && (date !== prev.date || time !== prev.time)) {
         changes.push(`zbiórka: ${date}, ${time}`);
       }
       if (recalculated) {
