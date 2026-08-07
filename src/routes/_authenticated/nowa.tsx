@@ -309,6 +309,7 @@ function Field({
   placeholder,
   value,
   onChange,
+  disabled,
 }: {
   name: string;
   label: string;
@@ -316,6 +317,7 @@ function Field({
   placeholder?: string;
   value?: string;
   onChange?: (value: string) => void;
+  disabled?: boolean;
 }) {
   return (
     <div>
@@ -329,7 +331,8 @@ function Field({
         id={name}
         name={name}
         type={type}
-        required
+        required={!disabled}
+        disabled={disabled}
         placeholder={placeholder}
         {...(onChange ? { value: value ?? "", onChange: (e) => onChange(e.target.value) } : {})}
         className="input-moto mt-1"
