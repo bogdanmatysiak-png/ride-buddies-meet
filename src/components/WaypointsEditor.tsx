@@ -1,8 +1,20 @@
 import { useState } from "react";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
-import type { OptimizeMode } from "@/hooks/useOptimizeWaypoints";
+import type { OptimizeMode, OrderComparison } from "@/hooks/useOptimizeWaypoints";
 
 export const MAX_WAYPOINTS = 20;
+
+function hm(minutes: number) {
+  return `${Math.floor(minutes / 60)} h ${minutes % 60} min`;
+}
+
+function delta(before: number, after: number, unit: string) {
+  const diff = after - before;
+  if (diff === 0) return `bez zmian (${unit === "min" ? hm(after) : `${after} ${unit}`})`;
+  const sign = diff > 0 ? "+" : "−";
+  const abs = Math.abs(diff);
+  return `${sign}${unit === "min" ? hm(abs) : `${abs} ${unit}`}`;
+}
 
 const modes: Array<{ key: OptimizeMode; label: string; hint: string }> = [
   { key: "fast", label: "Najszybsza", hint: "Kolejność pod najkrótszy czas jazdy" },
@@ -23,6 +35,7 @@ export function WaypointsEditor({
   canOptimize,
   mode = "fast",
   onModeChange,
+  comparison,
 }: {
   waypoints: string[];
   onChange: (next: string[]) => void;
@@ -32,6 +45,7 @@ export function WaypointsEditor({
   canOptimize?: boolean;
   mode?: OptimizeMode;
   onModeChange?: (mode: OptimizeMode) => void;
+  comparison?: OrderComparison | null;
 }) {
   const [draft, setDraft] = useState("");
   const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -108,6 +122,51 @@ export function WaypointsEditor({
                 ? "Ułóż automatycznie (kręta trasa)"
                 : "Ułóż automatycznie (najszybsza trasa)"}
           </button>
+          {comparison && (
+            <div className="mt-2 rounded-md border border-border bg-background p-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Przed vs po ułożeniu
+                </span>
+                <span className="text-[11px] text-muted-foreground">
+                  {comparison.changed ? "kolejność zmieniona" : "kolejność bez zmian"}
+                </span>
+              </div>
+              <dl className="mt-2 grid grid-cols-3 gap-2 text-xs">
+                {[
+                  {
+                    label: "Dystans",
+                    before: `${comparison.before.km} km`,
+                    after: `${comparison.after.km} km`,
+                    diff: delta(comparison.before.km, comparison.after.km, "km"),
+                  },
+                  {
+                    label: "Czas",
+                    before: hm(comparison.before.minutes),
+                    after: hm(comparison.after.minutes),
+                    diff: delta(comparison.before.minutes, comparison.after.minutes, "min"),
+                  },
+                  {
+                    label: "Zakręty",
+                    before: String(comparison.before.turns),
+                    after: String(comparison.after.turns),
+                    diff: delta(comparison.before.turns, comparison.after.turns, "szt."),
+                  },
+                ].map((row) => (
+                  <div key={row.label}>
+                    <dt className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                      {row.label}
+                    </dt>
+                    <dd className="mt-1 text-foreground">
+                      <span className="text-muted-foreground line-through">{row.before}</span>{" "}
+                      → <span className="font-semibold">{row.after}</span>
+                    </dd>
+                    <dd className="text-[11px] text-primary">{row.diff}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          )}
         </div>
       )}
 

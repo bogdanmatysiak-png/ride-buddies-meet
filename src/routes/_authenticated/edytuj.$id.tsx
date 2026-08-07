@@ -83,7 +83,7 @@ function EditRide() {
     waypoints,
     prefs,
   });
-  const { optimize, optimizing, canOptimize, mode, setMode } = useOptimizeWaypoints({
+  const { optimize, optimizing, canOptimize, mode, setMode, comparison } = useOptimizeWaypoints({
     start,
     end,
     waypoints,
@@ -270,6 +270,7 @@ function EditRide() {
               onModeChange={setMode}
               optimizing={optimizing}
               canOptimize={canOptimize}
+              comparison={comparison}
             />
           </div>
         )}
