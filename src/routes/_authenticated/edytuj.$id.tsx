@@ -26,6 +26,8 @@ import {
 import { useIsAdmin, useProfile, useSession } from "@/hooks/useAuth";
 import { rideMessagesQueryKey, sendRideUpdateNotice } from "@/lib/chat";
 import { notifyRideParticipants } from "@/lib/notifications";
+import { fetchMyGroups, groupsQueryKey } from "@/lib/groups";
+import { GroupPicker } from "@/components/GroupPicker";
 
 export const Route = createFileRoute("/_authenticated/edytuj/$id")({
   head: () => ({
@@ -73,6 +75,12 @@ function EditRide() {
   const [level, setLevel] = useState<RideLevel>("chill");
   const [intercom, setIntercom] = useState(false);
   const [intercomType, setIntercomType] = useState("");
+  const [groupId, setGroupId] = useState<string | null>(null);
+  const { data: groups = [] } = useQuery({
+    queryKey: [...groupsQueryKey, user?.id],
+    queryFn: () => fetchMyGroups(user!.id),
+    enabled: !!user,
+  });
   const [busy, setBusy] = useState(false);
   const [prefs, setPrefs] = useState<RoutePrefs>(defaultRoutePrefs);
   const [savingPrefs, setSavingPrefs] = useState(false);
@@ -117,6 +125,7 @@ function EditRide() {
     setLevel(ride.level);
     setIntercom(ride.intercom);
     setIntercomType(ride.intercomType);
+    setGroupId(ride.groupId);
   }, [ride]);
 
   if (isLoading) {
@@ -201,6 +210,7 @@ function EditRide() {
         level,
         intercom,
         intercomType: intercomType.trim(),
+        groupId,
       });
       await queryClient.invalidateQueries({ queryKey: ridesQueryKey });
       if (user && changes.length > 0) {
@@ -407,6 +417,8 @@ function EditRide() {
             className="input-moto mt-1"
           />
         </div>
+
+        <GroupPicker groups={groups} value={groupId} onChange={setGroupId} disabled={busy} />
 
         <button
           type="submit"

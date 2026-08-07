@@ -18,6 +18,8 @@ export type Ride = {
   description: string;
   intercom: boolean;
   intercomType: string;
+  groupId: string | null;
+  groupName: string | null;
   riderIds: string[];
   riders: string[];
 };
@@ -47,7 +49,7 @@ export async function fetchRides(): Promise<Ride[]> {
   const [{ data: rides, error }, { data: profiles }] = await Promise.all([
     supabase
       .from("rides")
-      .select("*, ride_participants(user_id)")
+      .select("*, ride_participants(user_id), groups(name)")
       .order("ride_date", { ascending: true }),
     supabase.from("profiles").select("id, nick"),
   ]);
@@ -73,6 +75,8 @@ export async function fetchRides(): Promise<Ride[]> {
       description: r.description,
       intercom: r.intercom,
       intercomType: r.intercom_type,
+      groupId: r.group_id,
+      groupName: r.groups?.name ?? null,
       riderIds,
       riders: riderIds.map((id) => nickById.get(id) ?? "Motocyklista"),
     };
@@ -108,6 +112,7 @@ export type NewRideInput = {
   description: string;
   intercom: boolean;
   intercomType: string;
+  groupId?: string | null;
 };
 
 export async function createRide(
@@ -131,6 +136,7 @@ export async function createRide(
       description: input.description,
       intercom: input.intercom,
       intercom_type: input.intercom ? input.intercomType : "",
+      group_id: input.groupId ?? null,
     })
     .select("id")
     .single();
@@ -165,6 +171,7 @@ export async function updateRide(rideId: string, input: NewRideInput) {
       description: input.description,
       intercom: input.intercom,
       intercom_type: input.intercom ? input.intercomType : "",
+      group_id: input.groupId ?? null,
     })
     .eq("id", rideId);
   if (error) throw error;

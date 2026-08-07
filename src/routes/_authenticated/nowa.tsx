@@ -1,8 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { createRide, levelLabel, ridesQueryKey, type RideLevel } from "@/lib/rides";
+import { fetchMyGroups, groupsQueryKey } from "@/lib/groups";
+import { GroupPicker } from "@/components/GroupPicker";
 import { RouteMap } from "@/components/RouteMap";
 import { RoutePrefsPicker } from "@/components/RoutePrefsPicker";
 import { WaypointsEditor } from "@/components/WaypointsEditor";
@@ -53,6 +55,12 @@ function NewRide() {
   const [unlimitedSpots, setUnlimitedSpots] = useState(false);
   const [prefs, setPrefs] = useState<RoutePrefs>(defaultRoutePrefs);
   const [savingPrefs, setSavingPrefs] = useState(false);
+  const [groupId, setGroupId] = useState<string | null>(null);
+  const { data: groups = [] } = useQuery({
+    queryKey: [...groupsQueryKey, user?.id],
+    queryFn: () => fetchMyGroups(user!.id),
+    enabled: !!user,
+  });
   const { plan, planning, error: planError, recalc } = useLiveRoute({
     start,
     end,
@@ -118,6 +126,7 @@ function NewRide() {
                 level,
                 intercom,
                 intercomType: intercomType.trim(),
+                groupId,
               },
               { id: user.id, nick: profile?.nick ?? "Motocyklista" },
             );
@@ -305,6 +314,8 @@ function NewRide() {
             className="input-moto mt-1"
           />
         </div>
+
+        <GroupPicker groups={groups} value={groupId} onChange={setGroupId} disabled={busy} />
 
         <button
           type="submit"

@@ -120,6 +120,11 @@ function RideDetail() {
         <Fact icon={<Users className="h-4 w-4" />} label="Interkom">
           {ride.intercom ? (ride.intercomType ? `Tak — ${ride.intercomType}` : "Tak") : "Nie"}
         </Fact>
+        {ride.groupName && (
+          <Fact icon={<Users className="h-4 w-4" />} label="Grupa">
+            {ride.groupName}
+          </Fact>
+        )}
       </dl>
 
       <section className="mt-5 rounded-lg border border-border bg-card p-5">
