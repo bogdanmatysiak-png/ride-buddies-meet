@@ -3,6 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import heroImage from "@/assets/hero-ride.jpg";
 import { RideCard } from "@/components/RideCard";
+import { NearbyFilter } from "@/components/NearbyFilter";
+import { useNearbyRides } from "@/hooks/useNearbyRides";
 import { fetchRides, levelLabel, ridesQueryKey, type RideLevel } from "@/lib/rides";
 import { useSession } from "@/hooks/useAuth";
 
@@ -39,8 +41,15 @@ function Index() {
   });
   const { user } = useSession();
   const [filter, setFilter] = useState<RideLevel | "all">("all");
+  const nearby = useNearbyRides(rides.map((r) => r.start));
+  const radiusActive = Boolean(user && nearby.origin && nearby.radius);
   const visible = [...rides]
     .filter((r) => filter === "all" || r.level === filter)
+    .filter((r) => {
+      if (!radiusActive) return true;
+      const km = nearby.distanceFor(r.start);
+      return km !== null && km <= (nearby.radius ?? 0);
+    })
     .sort((a, b) => a.date.localeCompare(b.date));
 
   return (
@@ -106,9 +115,28 @@ function Index() {
             </button>
           ))}
         </div>
+        {user && (
+          <NearbyFilter
+            originLabel={nearby.originLabel}
+            radius={nearby.radius}
+            error={nearby.error}
+            isLoading={nearby.isLoading}
+            hasOrigin={Boolean(nearby.origin)}
+            onRadius={nearby.setRadius}
+            onCoords={nearby.setOriginFromCoords}
+            onAddress={nearby.setOriginFromAddress}
+            onError={nearby.setError}
+            onClear={nearby.clearOrigin}
+          />
+        )}
         <div className="mt-5 space-y-3">
           {visible.map((ride) => (
-            <RideCard key={ride.id} ride={ride} currentUserId={user?.id ?? null} />
+            <RideCard
+              key={ride.id}
+              ride={ride}
+              currentUserId={user?.id ?? null}
+              distanceKm={radiusActive ? nearby.distanceFor(ride.start) : null}
+            />
           ))}
           {isLoading && (
             <p className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
@@ -117,7 +145,9 @@ function Index() {
           )}
           {!isLoading && visible.length === 0 && (
             <p className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-              Brak wypraw w tej kategorii. Może ogłosisz swoją?
+              {radiusActive
+                ? `Brak wypraw startujących do ${nearby.radius} km od wskazanego miejsca.`
+                : "Brak wypraw w tej kategorii. Może ogłosisz swoją?"}
             </p>
           )}
         </div>
