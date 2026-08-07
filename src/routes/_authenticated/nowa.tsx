@@ -48,6 +48,7 @@ function NewRide() {
   const [km, setKm] = useState("");
   const [plan, setPlan] = useState<RoutePlan | null>(null);
   const [planning, setPlanning] = useState(false);
+  const [unlimitedSpots, setUnlimitedSpots] = useState(false);
   const [prefs, setPrefs] = useState<RoutePrefs>(defaultRoutePrefs);
   const [savingPrefs, setSavingPrefs] = useState(false);
   const computeRoute = useServerFn(planRoute);
@@ -115,7 +116,7 @@ function NewRide() {
                 date: String(f.get("date")),
                 time: String(f.get("time")),
                 km: Number(f.get("km")),
-                spots: Number(f.get("spots")),
+                spots: unlimitedSpots ? 0 : Number(f.get("spots")),
                 description: String(f.get("description")),
                 level,
                 intercom,
@@ -191,7 +192,24 @@ function NewRide() {
             value={km}
             onChange={setKm}
           />
-          <Field name="spots" label="Miejsca" type="number" placeholder="12" />
+          <div>
+            <Field
+              name="spots"
+              label="Miejsca"
+              type="number"
+              placeholder={unlimitedSpots ? "bez limitu" : "12"}
+              disabled={unlimitedSpots}
+            />
+            <label className="mt-2 flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={unlimitedSpots}
+                onChange={(e) => setUnlimitedSpots(e.target.checked)}
+                className="h-4 w-4 accent-[hsl(var(--primary))]"
+              />
+              Bez limitu miejsc
+            </label>
+          </div>
         </div>
 
         <div className="rounded-lg border border-border bg-card p-4">
