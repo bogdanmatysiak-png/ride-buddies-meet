@@ -8,6 +8,7 @@ import {
   formatNotificationTime,
   markNotificationsRead,
   notificationsQueryKey,
+  notificationsHistoryQueryKey,
 } from "@/lib/notifications";
 
 export function NotificationBell({ userId }: { userId: string }) {
@@ -47,6 +48,7 @@ export function NotificationBell({ userId }: { userId: string }) {
       try {
         await markNotificationsRead(userId);
         await queryClient.invalidateQueries({ queryKey: notificationsQueryKey(userId) });
+        await queryClient.invalidateQueries({ queryKey: notificationsHistoryQueryKey(userId) });
       } catch {
         /* cicho — powiadomienia i tak są widoczne */
       }
