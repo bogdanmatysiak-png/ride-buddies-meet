@@ -22,6 +22,7 @@ import { Route as AuthenticatedZaproszeniaRouteImport } from './routes/_authenti
 import { Route as MotocyklistaIdRouteImport } from './routes/motocyklista.$id'
 import { Route as WyprawaIdRouteImport } from './routes/wyprawa.$id'
 import { Route as AuthenticatedEdytujIdRouteImport } from './routes/_authenticated/edytuj.$id'
+import { Route as AuthenticatedGrupaIdRouteImport } from './routes/_authenticated/grupa.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -89,6 +90,11 @@ const AuthenticatedEdytujIdRoute = AuthenticatedEdytujIdRouteImport.update({
   path: '/edytuj/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedGrupaIdRoute = AuthenticatedGrupaIdRouteImport.update({
+  id: '/grupa/$id',
+  path: '/grupa/$id',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -103,6 +109,7 @@ export interface FileRoutesByFullPath {
   '/motocyklista/$id': typeof MotocyklistaIdRoute
   '/wyprawa/$id': typeof WyprawaIdRoute
   '/edytuj/$id': typeof AuthenticatedEdytujIdRoute
+  '/grupa/$id': typeof AuthenticatedGrupaIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -117,6 +124,7 @@ export interface FileRoutesByTo {
   '/motocyklista/$id': typeof MotocyklistaIdRoute
   '/wyprawa/$id': typeof WyprawaIdRoute
   '/edytuj/$id': typeof AuthenticatedEdytujIdRoute
+  '/grupa/$id': typeof AuthenticatedGrupaIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -133,6 +141,7 @@ export interface FileRoutesById {
   '/motocyklista/$id': typeof MotocyklistaIdRoute
   '/wyprawa/$id': typeof WyprawaIdRoute
   '/_authenticated/edytuj/$id': typeof AuthenticatedEdytujIdRoute
+  '/_authenticated/grupa/$id': typeof AuthenticatedGrupaIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -149,6 +158,7 @@ export interface FileRouteTypes {
     | '/motocyklista/$id'
     | '/wyprawa/$id'
     | '/edytuj/$id'
+    | '/grupa/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -163,6 +173,7 @@ export interface FileRouteTypes {
     | '/motocyklista/$id'
     | '/wyprawa/$id'
     | '/edytuj/$id'
+    | '/grupa/$id'
   id:
     | '__root__'
     | '/'
@@ -178,6 +189,7 @@ export interface FileRouteTypes {
     | '/motocyklista/$id'
     | '/wyprawa/$id'
     | '/_authenticated/edytuj/$id'
+    | '/_authenticated/grupa/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -282,6 +294,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedEdytujIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/grupa/$id': {
+      id: '/_authenticated/grupa/$id'
+      path: '/grupa/$id'
+      fullPath: '/grupa/$id'
+      preLoaderRoute: typeof AuthenticatedGrupaIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -293,6 +312,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedProfilRoute: typeof AuthenticatedProfilRoute
   AuthenticatedZaproszeniaRoute: typeof AuthenticatedZaproszeniaRoute
   AuthenticatedEdytujIdRoute: typeof AuthenticatedEdytujIdRoute
+  AuthenticatedGrupaIdRoute: typeof AuthenticatedGrupaIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -303,6 +323,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedProfilRoute: AuthenticatedProfilRoute,
   AuthenticatedZaproszeniaRoute: AuthenticatedZaproszeniaRoute,
   AuthenticatedEdytujIdRoute: AuthenticatedEdytujIdRoute,
+  AuthenticatedGrupaIdRoute: AuthenticatedGrupaIdRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

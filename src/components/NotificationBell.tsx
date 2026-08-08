@@ -4,6 +4,14 @@ import { Link } from "@tanstack/react-router";
 import { ArrowUpRight, Bell } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
+  acceptInvite,
+  declineInvite,
+  fetchMyInvites,
+  groupInvitesQueryKey,
+  groupsQueryKey,
+} from "@/lib/groups";
+import { toast } from "sonner";
+import {
   fetchNotifications,
   formatNotificationTime,
   markNotificationsRead,
@@ -19,6 +27,19 @@ export function NotificationBell({ userId }: { userId: string }) {
     queryFn: () => fetchNotifications(userId),
   });
   const unread = items.filter((n) => !n.readAt).length;
+  const { data: invites = [] } = useQuery({
+    queryKey: [...groupInvitesQueryKey, userId],
+    queryFn: () => fetchMyInvites(userId),
+  });
+
+  async function refreshInvites() {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: groupInvitesQueryKey }),
+      queryClient.invalidateQueries({ queryKey: groupsQueryKey }),
+      queryClient.invalidateQueries({ queryKey: notificationsQueryKey(userId) }),
+      queryClient.invalidateQueries({ queryKey: notificationsHistoryQueryKey(userId) }),
+    ]);
+  }
 
   useEffect(() => {
     const channel = supabase
@@ -95,13 +116,54 @@ export function NotificationBell({ userId }: { userId: string }) {
                     </Link>
                   )}
                   {!n.rideId && n.groupId && (
-                    <Link
-                      to="/zaproszenia"
-                      onClick={() => setOpen(false)}
-                      className="mt-2 inline-flex items-center gap-1 rounded-md border border-primary px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
-                    >
-                      Zaproszenia <ArrowUpRight className="h-3 w-3" />
-                    </Link>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <Link
+                        to="/grupa/$id"
+                        params={{ id: n.groupId }}
+                        onClick={() => setOpen(false)}
+                        className="inline-flex items-center gap-1 rounded-md border border-primary px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
+                      >
+                        Otwórz grupę <ArrowUpRight className="h-3 w-3" />
+                      </Link>
+                      {(() => {
+                        const inv = invites.find((i) => i.groupId === n.groupId);
+                        if (!inv) return null;
+                        return (
+                          <>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                try {
+                                  await acceptInvite(inv.id);
+                                  await refreshInvites();
+                                  toast.success(`Dołączyłeś do grupy ${inv.groupName}`);
+                                } catch {
+                                  toast.error("Nie udało się zaakceptować zaproszenia");
+                                }
+                              }}
+                              className="rounded-md bg-primary px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-primary-foreground"
+                            >
+                              Akceptuj
+                            </button>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                try {
+                                  await declineInvite(inv.id);
+                                  await refreshInvites();
+                                  toast.success("Zaproszenie odrzucone");
+                                } catch {
+                                  toast.error("Nie udało się odrzucić zaproszenia");
+                                }
+                              }}
+                              className="rounded-md border border-border px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hover:border-destructive hover:text-destructive"
+                            >
+                              Odrzuć
+                            </button>
+                          </>
+                        );
+                      })()}
+                    </div>
                   )}
                 </li>
               ))}

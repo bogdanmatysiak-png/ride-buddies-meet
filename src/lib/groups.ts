@@ -263,3 +263,27 @@ export async function setMemberRole(memberId: string, role: GroupRole) {
   const { error } = await supabase.from("group_members").update({ role }).eq("id", memberId);
   if (error) throw error;
 }
+
+/** Pojedyncza grupa (dla ekranu grupy / linków z powiadomień). */
+export async function fetchGroupById(
+  groupId: string,
+  userId: string,
+): Promise<(Group & { members: GroupMember[] }) | null> {
+  const { data, error } = await supabase
+    .from("groups")
+    .select("id, name, owner_id")
+    .eq("id", groupId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  const members = await fetchGroupMembers(groupId);
+  const mine = members.find((m) => m.userId === userId);
+  return {
+    id: data.id,
+    name: data.name,
+    ownerId: data.owner_id,
+    isOwner: data.owner_id === userId,
+    myRole: data.owner_id === userId ? "owner" : (mine?.role ?? "member"),
+    members,
+  };
+}
