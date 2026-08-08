@@ -139,6 +139,8 @@ export type Database = {
           intercom: boolean
           intercom_type: string
           nick: string
+          notify_group_accepted: boolean
+          notify_group_invite: boolean
           pref_avoid_ferries: boolean
           pref_avoid_highways: boolean
           pref_avoid_tolls: boolean
@@ -153,6 +155,8 @@ export type Database = {
           intercom?: boolean
           intercom_type?: string
           nick: string
+          notify_group_accepted?: boolean
+          notify_group_invite?: boolean
           pref_avoid_ferries?: boolean
           pref_avoid_highways?: boolean
           pref_avoid_tolls?: boolean
@@ -167,6 +171,8 @@ export type Database = {
           intercom?: boolean
           intercom_type?: string
           nick?: string
+          notify_group_accepted?: boolean
+          notify_group_invite?: boolean
           pref_avoid_ferries?: boolean
           pref_avoid_highways?: boolean
           pref_avoid_tolls?: boolean
@@ -385,6 +391,10 @@ export type Database = {
       }
       is_group_owner: {
         Args: { _group_id: string; _user_id: string }
+        Returns: boolean
+      }
+      wants_notification: {
+        Args: { _kind: string; _user_id: string }
         Returns: boolean
       }
     }
