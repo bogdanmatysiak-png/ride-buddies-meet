@@ -1,10 +1,21 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowUpRight, BellRing, Check, Trash2, Undo2 } from "lucide-react";
+import { ArrowUpRight, BellRing, Check, Trash2, Undo2, UserPlus, Users, X } from "lucide-react";
 import { toast } from "sonner";
 import { useSession } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  acceptInvite,
+  cancelInvite,
+  declineInvite,
+  fetchMyInvites,
+  fetchSentInvites,
+  groupInvitesQueryKey,
+  groupRoleLabel,
+  groupsQueryKey,
+  sentInvitesQueryKey,
+} from "@/lib/groups";
 import {
   deleteNotification,
   fetchNotificationHistory,
@@ -41,7 +52,14 @@ export const Route = createFileRoute("/_authenticated/powiadomienia")({
   component: NotificationsPage,
 });
 
-type Filter = "all" | "unread";
+type Filter = "all" | "unread" | "groups" | "rides";
+
+const filterLabels: Record<Filter, string> = {
+  all: "Wszystkie",
+  unread: "Nieprzeczytane",
+  groups: "Zaproszenia i akceptacje",
+  rides: "Wyprawy",
+};
 
 function NotificationsPage() {
   const { session } = useSession();
@@ -55,11 +73,57 @@ function NotificationsPage() {
     queryFn: () => fetchNotificationHistory(userId!),
   });
 
+  const { data: invites = [] } = useQuery({
+    queryKey: groupInvitesQueryKey,
+    enabled: !!userId,
+    queryFn: () => fetchMyInvites(userId!),
+  });
+
+  const { data: sent = [] } = useQuery({
+    queryKey: sentInvitesQueryKey,
+    enabled: !!userId,
+    queryFn: () => fetchSentInvites(userId!),
+  });
+
   function refresh() {
     if (!userId) return;
     queryClient.invalidateQueries({ queryKey: notificationsHistoryQueryKey(userId) });
     queryClient.invalidateQueries({ queryKey: notificationsQueryKey(userId) });
   }
+
+  function refreshInvites() {
+    queryClient.invalidateQueries({ queryKey: groupInvitesQueryKey });
+    queryClient.invalidateQueries({ queryKey: sentInvitesQueryKey });
+    queryClient.invalidateQueries({ queryKey: groupsQueryKey });
+    refresh();
+  }
+
+  const accept = useMutation({
+    mutationFn: (id: string) => acceptInvite(id),
+    onSuccess: () => {
+      refreshInvites();
+      toast.success("Zaproszenie zaakceptowane. Jedziemy razem!");
+    },
+    onError: () => toast.error("Nie udało się zaakceptować zaproszenia."),
+  });
+
+  const decline = useMutation({
+    mutationFn: (id: string) => declineInvite(id),
+    onSuccess: () => {
+      refreshInvites();
+      toast.success("Zaproszenie odrzucone.");
+    },
+    onError: () => toast.error("Nie udało się odrzucić zaproszenia."),
+  });
+
+  const cancel = useMutation({
+    mutationFn: (id: string) => cancelInvite(id),
+    onSuccess: () => {
+      refreshInvites();
+      toast.success("Zaproszenie anulowane.");
+    },
+    onError: () => toast.error("Nie udało się anulować zaproszenia."),
+  });
 
   useEffect(() => {
     if (!userId) return;
@@ -102,7 +166,21 @@ function NotificationsPage() {
   });
 
   const unread = items.filter((n) => !n.readAt).length;
-  const visible = filter === "unread" ? items.filter((n) => !n.readAt) : items;
+  const counts = useMemo(
+    () => ({
+      all: items.length,
+      unread,
+      groups: items.filter((n) => n.groupId).length,
+      rides: items.filter((n) => n.rideId).length,
+    }),
+    [items, unread],
+  );
+  const visible = items.filter((n) => {
+    if (filter === "unread") return !n.readAt;
+    if (filter === "groups") return !!n.groupId;
+    if (filter === "rides") return !!n.rideId;
+    return true;
+  });
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-6">
@@ -113,7 +191,7 @@ function NotificationsPage() {
             Powiadomienia
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Historia komunikatów o Twoich wyprawach.{" "}
+            Centrum powiadomień: zaproszenia, akceptacje i zmiany w wyprawach.{" "}
             {unread > 0 ? `${unread} nieprzeczytane.` : "Wszystko przeczytane."}
           </p>
         </div>
@@ -127,8 +205,82 @@ function NotificationsPage() {
         </button>
       </div>
 
-      <div className="mt-5 flex gap-2">
-        {(["all", "unread"] as Filter[]).map((f) => (
+      {invites.length > 0 && (
+        <section className="mt-6 rounded-lg border border-primary/50 bg-card p-4">
+          <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-primary">
+            <UserPlus className="h-4 w-4" /> Zaproszenia do akceptacji ({invites.length})
+          </h2>
+          <ul className="mt-3 space-y-2">
+            {invites.map((inv) => (
+              <li
+                key={inv.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-background/40 px-3 py-2.5"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-foreground">{inv.groupName}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Od {inv.inviterNick} • rola: {groupRoleLabel[inv.role]} •{" "}
+                    {formatNotificationTime(inv.createdAt)}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    disabled={accept.isPending}
+                    onClick={() => accept.mutate(inv.id)}
+                    className="rounded-md bg-primary px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-primary-foreground disabled:opacity-50"
+                  >
+                    Akceptuj
+                  </button>
+                  <button
+                    type="button"
+                    disabled={decline.isPending}
+                    onClick={() => decline.mutate(inv.id)}
+                    className="rounded-md border border-border px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground transition-colors hover:border-destructive/60 hover:text-destructive disabled:opacity-50"
+                  >
+                    Odrzuć
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {sent.length > 0 && (
+        <section className="mt-4 rounded-lg border border-border bg-card p-4">
+          <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+            <Users className="h-4 w-4" /> Wysłane przez Ciebie ({sent.length})
+          </h2>
+          <ul className="mt-3 space-y-2">
+            {sent.map((inv) => (
+              <li
+                key={inv.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-background/40 px-3 py-2.5"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-foreground">{inv.inviteeNick}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {inv.groupName} • rola: {groupRoleLabel[inv.role]} •{" "}
+                    {formatNotificationTime(inv.createdAt)} • oczekuje
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  disabled={cancel.isPending}
+                  onClick={() => cancel.mutate(inv.id)}
+                  className="inline-flex items-center gap-1 rounded-md border border-border px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground transition-colors hover:border-destructive/60 hover:text-destructive disabled:opacity-50"
+                >
+                  <X className="h-3.5 w-3.5" /> Anuluj
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <div className="mt-5 flex flex-wrap gap-2">
+        {(["all", "unread", "groups", "rides"] as Filter[]).map((f) => (
           <button
             key={f}
             type="button"
@@ -139,7 +291,7 @@ function NotificationsPage() {
                 : "border border-border text-muted-foreground hover:border-primary/60"
             }`}
           >
-            {f === "all" ? `Wszystkie (${items.length})` : `Nieprzeczytane (${unread})`}
+            {filterLabels[f]} ({counts[f]})
           </button>
         ))}
       </div>
@@ -150,7 +302,11 @@ function NotificationsPage() {
         <p className="mt-8 rounded-lg border border-border bg-card px-4 py-6 text-sm text-muted-foreground">
           {filter === "unread"
             ? "Brak nieprzeczytanych powiadomień."
-            : "Nie masz jeszcze żadnych powiadomień. Dołącz do wyprawy, żeby dostawać informacje o zmianach trasy."}
+            : filter === "groups"
+              ? "Brak powiadomień o zaproszeniach i akceptacjach."
+              : filter === "rides"
+                ? "Brak powiadomień o wyprawach."
+                : "Nie masz jeszcze żadnych powiadomień. Dołącz do wyprawy, żeby dostawać informacje o zmianach trasy."}
         </p>
       ) : (
         <ul className="mt-5 space-y-2">
