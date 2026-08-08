@@ -42,6 +42,8 @@ function ProfilePage() {
   const [intercom, setIntercom] = useState(false);
   const [intercomType, setIntercomType] = useState("");
   const [prefs, setPrefs] = useState<RoutePrefs>(defaultRoutePrefs);
+  const [notifyInvite, setNotifyInvite] = useState(true);
+  const [notifyAccepted, setNotifyAccepted] = useState(true);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -52,6 +54,8 @@ function ProfilePage() {
       setIntercom(profile.intercom);
       setIntercomType(profile.intercom_type);
       setPrefs(prefsFromProfile(profile));
+      setNotifyInvite(profile.notify_group_invite);
+      setNotifyAccepted(profile.notify_group_accepted);
     } else if (user && !isLoading) {
       setNick((user.user_metadata?.["nick"] as string) ?? user.email?.split("@")[0] ?? "");
     }
@@ -74,6 +78,8 @@ function ProfilePage() {
           intercom,
           intercom_type: intercom ? intercomType.trim() : "",
           ...prefsToProfile(prefs),
+          notify_group_invite: notifyInvite,
+          notify_group_accepted: notifyAccepted,
         },
         { onConflict: "id" },
       );
@@ -161,6 +167,39 @@ function ProfilePage() {
             Te ustawienia podstawiają się automatycznie, gdy wyznaczasz trasę nowej wyprawy.
           </p>
         </div>
+        <fieldset className="rounded-md border border-border p-4">
+          <legend className="px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Powiadomienia
+          </legend>
+          <label className="flex items-start gap-3 py-1">
+            <input
+              type="checkbox"
+              checked={notifyInvite}
+              onChange={(e) => setNotifyInvite(e.target.checked)}
+              className="mt-1 h-4 w-4 accent-primary"
+            />
+            <span className="text-sm text-foreground">
+              Zaproszenia do grup
+              <span className="block text-xs text-muted-foreground">
+                Gdy ktoś zaprasza Cię do grupy albo anuluje zaproszenie.
+              </span>
+            </span>
+          </label>
+          <label className="flex items-start gap-3 py-1">
+            <input
+              type="checkbox"
+              checked={notifyAccepted}
+              onChange={(e) => setNotifyAccepted(e.target.checked)}
+              className="mt-1 h-4 w-4 accent-primary"
+            />
+            <span className="text-sm text-foreground">
+              Odpowiedzi na Twoje zaproszenia
+              <span className="block text-xs text-muted-foreground">
+                Gdy zaproszona osoba zaakceptuje albo odrzuci zaproszenie do Twojej grupy.
+              </span>
+            </span>
+          </label>
+        </fieldset>
         <button
           type="submit"
           disabled={busy}
