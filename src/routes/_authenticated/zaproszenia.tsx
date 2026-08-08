@@ -5,11 +5,14 @@ import { toast } from "sonner";
 import { useSession } from "@/hooks/useAuth";
 import {
   acceptInvite,
+  cancelInvite,
+  declineInvite,
+  fetchSentInvites,
   fetchMyInvites,
   groupInvitesQueryKey,
   groupRoleLabel,
   groupsQueryKey,
-  removeMembership,
+  sentInvitesQueryKey,
 } from "@/lib/groups";
 import { formatNotificationTime } from "@/lib/notifications";
 
@@ -48,11 +51,17 @@ function InvitesPage() {
     queryFn: () => fetchMyInvites(user!.id),
     enabled: !!user,
   });
+  const { data: sent = [] } = useQuery({
+    queryKey: [...sentInvitesQueryKey, user?.id],
+    queryFn: () => fetchSentInvites(user!.id),
+    enabled: !!user,
+  });
 
   async function refresh() {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: groupInvitesQueryKey }),
       queryClient.invalidateQueries({ queryKey: groupsQueryKey }),
+      queryClient.invalidateQueries({ queryKey: sentInvitesQueryKey }),
     ]);
   }
 
@@ -116,9 +125,9 @@ function InvitesPage() {
                   type="button"
                   onClick={async () => {
                     try {
-                      await removeMembership(invite.id);
+                      await declineInvite(invite.id);
                       await refresh();
-                      toast.success("Zaproszenie odrzucone");
+                      toast.success("Zaproszenie odrzucone — nadawca dostał powiadomienie");
                     } catch (error) {
                       toast.error(error instanceof Error ? error.message : "Nie udało się odrzucić");
                     }
@@ -132,6 +141,53 @@ function InvitesPage() {
           ))}
         </ul>
       )}
+
+      <section className="mt-10">
+        <h2 className="font-display text-2xl tracking-wide text-foreground">Wysłane przez Ciebie</h2>
+        {sent.length === 0 ? (
+          <p className="mt-2 text-sm text-muted-foreground">
+            Nie masz zaproszeń oczekujących na odpowiedź.
+          </p>
+        ) : (
+          <ul className="mt-4 space-y-3">
+            {sent.map((invite) => (
+              <li
+                key={invite.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card p-4"
+              >
+                <div>
+                  <p className="text-sm text-foreground">
+                    <span className="font-semibold text-primary">{invite.inviteeNick}</span> —
+                    zaproszenie do grupy{" "}
+                    <span className="font-semibold text-foreground">{invite.groupName}</span>
+                  </p>
+                  <p className="mt-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Rola: {groupRoleLabel[invite.role]} · {formatNotificationTime(invite.createdAt)} ·
+                    czeka na odpowiedź
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await cancelInvite(invite.id);
+                      await refresh();
+                      toast.success(`Zaproszenie dla ${invite.inviteeNick} anulowane`);
+                    } catch (error) {
+                      toast.error(
+                        error instanceof Error ? error.message : "Nie udało się anulować zaproszenia",
+                      );
+                    }
+                  }}
+                  className="rounded-md border border-border px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:border-destructive hover:text-destructive"
+                >
+                  Anuluj
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </main>
   );
 }
