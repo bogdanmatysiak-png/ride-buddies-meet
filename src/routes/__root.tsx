@@ -229,6 +229,12 @@ function AuthNav() {
         Grupy
       </Link>
       <Link
+        to="/zaproszenia"
+        className="rounded-md border border-border px-3 py-1.5 text-sm font-semibold text-foreground transition-colors hover:border-primary/60"
+      >
+        Zaproszenia
+      </Link>
+      <Link
         to="/profil"
         className="rounded-md border border-border px-3 py-1.5 text-sm font-semibold text-foreground transition-colors hover:border-primary/60"
       >

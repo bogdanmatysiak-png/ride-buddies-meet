@@ -94,6 +94,15 @@ export function NotificationBell({ userId }: { userId: string }) {
                       Otwórz wyprawę <ArrowUpRight className="h-3 w-3" />
                     </Link>
                   )}
+                  {!n.rideId && n.groupId && (
+                    <Link
+                      to="/zaproszenia"
+                      onClick={() => setOpen(false)}
+                      className="mt-2 inline-flex items-center gap-1 rounded-md border border-primary px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
+                    >
+                      Zaproszenia <ArrowUpRight className="h-3 w-3" />
+                    </Link>
+                  )}
                 </li>
               ))}
             </ul>
