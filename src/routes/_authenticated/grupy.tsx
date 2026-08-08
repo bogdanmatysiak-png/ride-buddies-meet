@@ -5,7 +5,9 @@ import { toast } from "sonner";
 import { useSession } from "@/hooks/useAuth";
 import {
   acceptInvite,
+  cancelInvite,
   createGroup,
+  declineInvite,
   deleteGroup,
   fetchGroupMembers,
   fetchMyGroups,
@@ -160,9 +162,9 @@ function GroupsPage() {
                     type="button"
                     onClick={async () => {
                       try {
-                        await removeMembership(invite.id);
+                        await declineInvite(invite.id);
                         await refresh();
-                        toast.success("Zaproszenie odrzucone");
+                        toast.success("Zaproszenie odrzucone — nadawca dostał powiadomienie");
                       } catch (error) {
                         toast.error(
                           error instanceof Error ? error.message : "Nie udało się odrzucić",
