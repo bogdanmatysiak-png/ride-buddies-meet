@@ -35,6 +35,16 @@ export type GroupMember = {
 
 export const groupsQueryKey = ["groups"] as const;
 export const groupInvitesQueryKey = ["group-invites"] as const;
+export const sentInvitesQueryKey = ["group-invites-sent"] as const;
+
+export type SentInvite = {
+  id: string;
+  groupId: string;
+  groupName: string;
+  role: GroupRole;
+  inviteeNick: string;
+  createdAt: string;
+};
 
 /** Grupy, do których należę (jako właściciel albo zaakceptowany członek). */
 export async function fetchMyGroups(userId: string): Promise<Group[]> {
@@ -204,6 +214,47 @@ export async function acceptInvite(memberId: string) {
 /** Odrzucenie zaproszenia albo wyjście / usunięcie z grupy. */
 export async function removeMembership(memberId: string) {
   const { error } = await supabase.from("group_members").delete().eq("id", memberId);
+  if (error) throw error;
+}
+
+/** Zaproszenia, które ja wysłałem i wciąż czekają na odpowiedź. */
+export async function fetchSentInvites(userId: string): Promise<SentInvite[]> {
+  const { data, error } = await supabase
+    .from("group_members")
+    .select("id, created_at, role, user_id, group:groups(id, name)")
+    .eq("invited_by", userId)
+    .eq("status", "pending")
+    .neq("user_id", userId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  const rows = (data ?? []).filter((row) => row.group);
+  const ids = [...new Set(rows.map((r) => r.user_id))];
+  const { data: profiles } = ids.length
+    ? await supabase.from("profiles").select("id, nick").in("id", ids)
+    : { data: [] };
+  const nickById = new Map((profiles ?? []).map((p) => [p.id, p.nick]));
+  return rows.map((row) => ({
+    id: row.id,
+    groupId: row.group!.id,
+    groupName: row.group!.name,
+    role: (row.role as GroupRole) ?? "member",
+    inviteeNick: nickById.get(row.user_id) ?? "Motocyklista",
+    createdAt: row.created_at,
+  }));
+}
+
+/** Zaproszony odrzuca zaproszenie — nadawca dostaje powiadomienie (trigger w bazie). */
+export async function declineInvite(memberId: string) {
+  await removeMembership(memberId);
+}
+
+/** Nadawca (lub właściciel grupy) anuluje wysłane zaproszenie. */
+export async function cancelInvite(memberId: string) {
+  const { error } = await supabase
+    .from("group_members")
+    .delete()
+    .eq("id", memberId)
+    .eq("status", "pending");
   if (error) throw error;
 }
 

@@ -5,7 +5,9 @@ import { toast } from "sonner";
 import { useSession } from "@/hooks/useAuth";
 import {
   acceptInvite,
+  cancelInvite,
   createGroup,
+  declineInvite,
   deleteGroup,
   fetchGroupMembers,
   fetchMyGroups,
@@ -160,9 +162,9 @@ function GroupsPage() {
                     type="button"
                     onClick={async () => {
                       try {
-                        await removeMembership(invite.id);
+                        await declineInvite(invite.id);
                         await refresh();
-                        toast.success("Zaproszenie odrzucone");
+                        toast.success("Zaproszenie odrzucone — nadawca dostał powiadomienie");
                       } catch (error) {
                         toast.error(
                           error instanceof Error ? error.message : "Nie udało się odrzucić",
@@ -285,9 +287,17 @@ function GroupRow({
                     type="button"
                     onClick={async () => {
                       try {
-                        await removeMembership(m.id);
+                        if (m.status === "pending") {
+                          await cancelInvite(m.id);
+                        } else {
+                          await removeMembership(m.id);
+                        }
                         await reload();
-                        toast.success("Zaktualizowano skład grupy");
+                        toast.success(
+                          m.status === "pending"
+                            ? `Zaproszenie dla ${m.nick} anulowane`
+                            : "Zaktualizowano skład grupy",
+                        );
                       } catch (error) {
                         toast.error(
                           error instanceof Error ? error.message : "Nie udało się usunąć",
@@ -295,7 +305,11 @@ function GroupRow({
                       }
                     }}
                     className="rounded-md border border-border px-2 text-sm text-muted-foreground hover:border-destructive hover:text-destructive"
-                    aria-label={`Usuń ${m.nick} z grupy`}
+                    aria-label={
+                      m.status === "pending"
+                        ? `Anuluj zaproszenie dla ${m.nick}`
+                        : `Usuń ${m.nick} z grupy`
+                    }
                   >
                     ✕
                   </button>
