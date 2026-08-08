@@ -1,6 +1,6 @@
 export type Coords = { lat: number; lng: number };
 
-export const RADIUS_OPTIONS = [50, 70, 100, 150] as const;
+export const RADIUS_OPTIONS = [10, 30, 50, 70, 100, 150] as const;
 export type RadiusOption = (typeof RADIUS_OPTIONS)[number];
 
 const CACHE_KEY = "motortrip.geocache.v1";
