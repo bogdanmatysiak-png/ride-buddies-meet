@@ -175,6 +175,13 @@ function GroupsPage() {
                   >
                     Odrzuć
                   </button>
+                  <Link
+                    to="/grupa/$id"
+                    params={{ id: invite.groupId }}
+                    className="rounded-md border border-border px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:border-primary hover:text-primary"
+                  >
+                    Podejrzyj
+                  </Link>
                 </div>
               </li>
             ))}
@@ -243,6 +250,15 @@ function GroupRow({
         >
           {open ? "Zwiń" : "Zarządzaj"}
         </button>
+      </div>
+      <div className="mt-3">
+        <Link
+          to="/grupa/$id"
+          params={{ id: group.id }}
+          className="inline-flex items-center gap-1 rounded-md border border-primary px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
+        >
+          Otwórz czat grupy
+        </Link>
       </div>
 
       {open && (
