@@ -208,6 +208,7 @@ function GroupRow({
 }) {
   const queryClient = useQueryClient();
   const [nick, setNick] = useState("");
+  const [inviteRole, setInviteRole] = useState<GroupRole>("member");
   const [rename, setRename] = useState(group.name);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -230,7 +231,7 @@ function GroupRow({
         <div>
           <h3 className="text-2xl text-foreground">{group.name}</h3>
           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            {group.isOwner ? "Twoja grupa" : "Jesteś członkiem"}
+            Twoja rola: {groupRoleLabel[group.myRole]}
           </p>
         </div>
         <button
@@ -250,7 +251,32 @@ function GroupRow({
                 key={m.id}
                 className="flex items-center justify-between gap-2 rounded-md border border-border bg-background px-3 py-2"
               >
-                <span className="text-sm text-foreground">{m.nick}</span>
+                <span className="min-w-0 flex-1 truncate text-sm text-foreground">{m.nick}</span>
+                {group.isOwner && m.userId !== group.ownerId ? (
+                  <select
+                    value={m.role}
+                    aria-label={`Rola ${m.nick}`}
+                    onChange={async (e) => {
+                      try {
+                        await setMemberRole(m.id, e.target.value as GroupRole);
+                        await reload();
+                        toast.success(`Rola ${m.nick} zmieniona`);
+                      } catch (error) {
+                        toast.error(
+                          error instanceof Error ? error.message : "Nie udało się zmienić roli",
+                        );
+                      }
+                    }}
+                    className="rounded-md border border-border bg-card px-2 py-1 text-xs text-foreground"
+                  >
+                    <option value="member">{groupRoleLabel.member}</option>
+                    <option value="moderator">{groupRoleLabel.moderator}</option>
+                  </select>
+                ) : (
+                  <span className="text-[11px] uppercase tracking-wider text-primary">
+                    {groupRoleLabel[m.role]}
+                  </span>
+                )}
                 <span className="text-[11px] uppercase tracking-wider text-muted-foreground">
                   {m.status === "accepted" ? "w grupie" : "zaproszony"}
                 </span>
@@ -291,6 +317,15 @@ function GroupRow({
                   placeholder="Nick osoby do zaproszenia"
                   className="input-moto flex-1"
                 />
+                <select
+                  value={inviteRole}
+                  aria-label="Rola w grupie dla zaproszonej osoby"
+                  onChange={(e) => setInviteRole(e.target.value as GroupRole)}
+                  className="shrink-0 rounded-md border border-border bg-card px-2 text-xs text-foreground"
+                >
+                  <option value="member">{groupRoleLabel.member}</option>
+                  <option value="moderator">{groupRoleLabel.moderator}</option>
+                </select>
                 <button
                   type="button"
                   disabled={busy || nick.trim().length < 2 || !userId}
@@ -298,7 +333,7 @@ function GroupRow({
                     if (!userId) return;
                     setBusy(true);
                     try {
-                      const invited = await inviteToGroup(group.id, nick, userId);
+                      const invited = await inviteToGroup(group.id, nick, userId, inviteRole);
                       setNick("");
                       await reload();
                       toast.success(`Zaproszenie dla ${invited} wysłane`);
