@@ -18,6 +18,7 @@ import { Route as AuthenticatedGrupyRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedNowaRouteImport } from './routes/_authenticated/nowa'
 import { Route as AuthenticatedPowiadomieniaRouteImport } from './routes/_authenticated/powiadomienia'
 import { Route as AuthenticatedProfilRouteImport } from './routes/_authenticated/profil'
+import { Route as AuthenticatedZaproszeniaRouteImport } from './routes/_authenticated/zaproszenia'
 import { Route as MotocyklistaIdRouteImport } from './routes/motocyklista.$id'
 import { Route as WyprawaIdRouteImport } from './routes/wyprawa.$id'
 import { Route as AuthenticatedEdytujIdRouteImport } from './routes/_authenticated/edytuj.$id'
@@ -67,6 +68,12 @@ const AuthenticatedProfilRoute = AuthenticatedProfilRouteImport.update({
   path: '/profil',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedZaproszeniaRoute =
+  AuthenticatedZaproszeniaRouteImport.update({
+    id: '/zaproszenia',
+    path: '/zaproszenia',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const MotocyklistaIdRoute = MotocyklistaIdRouteImport.update({
   id: '/motocyklista/$id',
   path: '/motocyklista/$id',
@@ -92,6 +99,7 @@ export interface FileRoutesByFullPath {
   '/nowa': typeof AuthenticatedNowaRoute
   '/powiadomienia': typeof AuthenticatedPowiadomieniaRoute
   '/profil': typeof AuthenticatedProfilRoute
+  '/zaproszenia': typeof AuthenticatedZaproszeniaRoute
   '/motocyklista/$id': typeof MotocyklistaIdRoute
   '/wyprawa/$id': typeof WyprawaIdRoute
   '/edytuj/$id': typeof AuthenticatedEdytujIdRoute
@@ -105,6 +113,7 @@ export interface FileRoutesByTo {
   '/nowa': typeof AuthenticatedNowaRoute
   '/powiadomienia': typeof AuthenticatedPowiadomieniaRoute
   '/profil': typeof AuthenticatedProfilRoute
+  '/zaproszenia': typeof AuthenticatedZaproszeniaRoute
   '/motocyklista/$id': typeof MotocyklistaIdRoute
   '/wyprawa/$id': typeof WyprawaIdRoute
   '/edytuj/$id': typeof AuthenticatedEdytujIdRoute
@@ -120,6 +129,7 @@ export interface FileRoutesById {
   '/_authenticated/nowa': typeof AuthenticatedNowaRoute
   '/_authenticated/powiadomienia': typeof AuthenticatedPowiadomieniaRoute
   '/_authenticated/profil': typeof AuthenticatedProfilRoute
+  '/_authenticated/zaproszenia': typeof AuthenticatedZaproszeniaRoute
   '/motocyklista/$id': typeof MotocyklistaIdRoute
   '/wyprawa/$id': typeof WyprawaIdRoute
   '/_authenticated/edytuj/$id': typeof AuthenticatedEdytujIdRoute
@@ -135,6 +145,7 @@ export interface FileRouteTypes {
     | '/nowa'
     | '/powiadomienia'
     | '/profil'
+    | '/zaproszenia'
     | '/motocyklista/$id'
     | '/wyprawa/$id'
     | '/edytuj/$id'
@@ -148,6 +159,7 @@ export interface FileRouteTypes {
     | '/nowa'
     | '/powiadomienia'
     | '/profil'
+    | '/zaproszenia'
     | '/motocyklista/$id'
     | '/wyprawa/$id'
     | '/edytuj/$id'
@@ -162,6 +174,7 @@ export interface FileRouteTypes {
     | '/_authenticated/nowa'
     | '/_authenticated/powiadomienia'
     | '/_authenticated/profil'
+    | '/_authenticated/zaproszenia'
     | '/motocyklista/$id'
     | '/wyprawa/$id'
     | '/_authenticated/edytuj/$id'
@@ -241,6 +254,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProfilRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/zaproszenia': {
+      id: '/_authenticated/zaproszenia'
+      path: '/zaproszenia'
+      fullPath: '/zaproszenia'
+      preLoaderRoute: typeof AuthenticatedZaproszeniaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/motocyklista/$id': {
       id: '/motocyklista/$id'
       path: '/motocyklista/$id'
@@ -271,6 +291,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedNowaRoute: typeof AuthenticatedNowaRoute
   AuthenticatedPowiadomieniaRoute: typeof AuthenticatedPowiadomieniaRoute
   AuthenticatedProfilRoute: typeof AuthenticatedProfilRoute
+  AuthenticatedZaproszeniaRoute: typeof AuthenticatedZaproszeniaRoute
   AuthenticatedEdytujIdRoute: typeof AuthenticatedEdytujIdRoute
 }
 
@@ -280,6 +301,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedNowaRoute: AuthenticatedNowaRoute,
   AuthenticatedPowiadomieniaRoute: AuthenticatedPowiadomieniaRoute,
   AuthenticatedProfilRoute: AuthenticatedProfilRoute,
+  AuthenticatedZaproszeniaRoute: AuthenticatedZaproszeniaRoute,
   AuthenticatedEdytujIdRoute: AuthenticatedEdytujIdRoute,
 }
 

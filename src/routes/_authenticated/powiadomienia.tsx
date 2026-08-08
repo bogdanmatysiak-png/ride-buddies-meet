@@ -185,6 +185,14 @@ function NotificationsPage() {
                       Otwórz wyprawę <ArrowUpRight className="h-3.5 w-3.5" />
                     </Link>
                   )}
+                  {!n.rideId && n.groupId && (
+                    <Link
+                      to="/zaproszenia"
+                      className="mt-2 inline-flex items-center gap-1 rounded-md border border-primary px-2.5 py-1.5 text-xs font-semibold uppercase tracking-wider text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
+                    >
+                      Zobacz zaproszenia <ArrowUpRight className="h-3.5 w-3.5" />
+                    </Link>
+                  )}
                 </div>
                 <div className="flex shrink-0 gap-1">
                   <button

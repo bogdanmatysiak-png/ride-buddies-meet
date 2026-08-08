@@ -1,11 +1,27 @@
 import { supabase } from "@/integrations/supabase/client";
 
-export type Group = { id: string; name: string; ownerId: string; isOwner: boolean };
+export type GroupRole = "owner" | "moderator" | "member";
+
+export const groupRoleLabel: Record<GroupRole, string> = {
+  owner: "Właściciel",
+  moderator: "Moderator",
+  member: "Członek",
+};
+
+export type Group = {
+  id: string;
+  name: string;
+  ownerId: string;
+  isOwner: boolean;
+  myRole: GroupRole;
+};
 
 export type GroupInvite = {
   id: string;
   groupId: string;
   groupName: string;
+  role: GroupRole;
+  inviterNick: string;
   createdAt: string;
 };
 
@@ -14,6 +30,7 @@ export type GroupMember = {
   userId: string;
   nick: string;
   status: "pending" | "accepted";
+  role: GroupRole;
 };
 
 export const groupsQueryKey = ["groups"] as const;
@@ -24,7 +41,7 @@ export async function fetchMyGroups(userId: string): Promise<Group[]> {
   const [{ data: memberships, error }, { data: owned, error: ownedError }] = await Promise.all([
     supabase
       .from("group_members")
-      .select("group:groups(id, name, owner_id)")
+      .select("role, group:groups(id, name, owner_id)")
       .eq("user_id", userId)
       .eq("status", "accepted"),
     supabase.from("groups").select("id, name, owner_id").eq("owner_id", userId),
@@ -34,12 +51,24 @@ export async function fetchMyGroups(userId: string): Promise<Group[]> {
 
   const byId = new Map<string, Group>();
   for (const row of owned ?? []) {
-    byId.set(row.id, { id: row.id, name: row.name, ownerId: row.owner_id, isOwner: true });
+    byId.set(row.id, {
+      id: row.id,
+      name: row.name,
+      ownerId: row.owner_id,
+      isOwner: true,
+      myRole: "owner",
+    });
   }
   for (const row of memberships ?? []) {
     const g = row.group;
     if (!g || byId.has(g.id)) continue;
-    byId.set(g.id, { id: g.id, name: g.name, ownerId: g.owner_id, isOwner: g.owner_id === userId });
+    byId.set(g.id, {
+      id: g.id,
+      name: g.name,
+      ownerId: g.owner_id,
+      isOwner: g.owner_id === userId,
+      myRole: (row.role as GroupRole) ?? "member",
+    });
   }
   return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name, "pl"));
 }
@@ -48,17 +77,25 @@ export async function fetchMyGroups(userId: string): Promise<Group[]> {
 export async function fetchMyInvites(userId: string): Promise<GroupInvite[]> {
   const { data, error } = await supabase
     .from("group_members")
-    .select("id, created_at, group:groups(id, name)")
+    .select("id, created_at, role, invited_by, group:groups(id, name)")
     .eq("user_id", userId)
     .eq("status", "pending")
     .order("created_at", { ascending: false });
   if (error) throw error;
-  return (data ?? [])
+  const rows = (data ?? []).filter((row) => row.group);
+  const inviterIds = [...new Set(rows.map((r) => r.invited_by).filter(Boolean))] as string[];
+  const { data: inviters } = inviterIds.length
+    ? await supabase.from("profiles").select("id, nick").in("id", inviterIds)
+    : { data: [] };
+  const nickById = new Map((inviters ?? []).map((p) => [p.id, p.nick]));
+  return rows
     .filter((row) => row.group)
     .map((row) => ({
       id: row.id,
       groupId: row.group!.id,
       groupName: row.group!.name,
+      role: (row.role as GroupRole) ?? "member",
+      inviterNick: (row.invited_by && nickById.get(row.invited_by)) || "Motocyklista",
       createdAt: row.created_at,
     }));
 }
@@ -66,7 +103,7 @@ export async function fetchMyInvites(userId: string): Promise<GroupInvite[]> {
 export async function fetchGroupMembers(groupId: string): Promise<GroupMember[]> {
   const { data, error } = await supabase
     .from("group_members")
-    .select("id, user_id, status")
+    .select("id, user_id, status, role")
     .eq("group_id", groupId);
   if (error) throw error;
   const ids = (data ?? []).map((m) => m.user_id);
@@ -79,6 +116,7 @@ export async function fetchGroupMembers(groupId: string): Promise<GroupMember[]>
     userId: m.user_id,
     nick: nickById.get(m.user_id) ?? "Motocyklista",
     status: m.status,
+    role: (m.role as GroupRole) ?? "member",
   }));
 }
 
@@ -93,7 +131,13 @@ export async function createGroup(name: string, ownerId: string): Promise<string
   if (error) throw error;
   const { error: memberError } = await supabase
     .from("group_members")
-    .insert({ group_id: data.id, user_id: ownerId, status: "accepted", invited_by: ownerId });
+    .insert({
+      group_id: data.id,
+      user_id: ownerId,
+      status: "accepted",
+      invited_by: ownerId,
+      role: "owner",
+    });
   if (memberError) throw memberError;
   return data.id;
 }
@@ -111,7 +155,12 @@ export async function deleteGroup(groupId: string) {
 }
 
 /** Zaproszenie po nicku — zaproszony musi je zaakceptować. */
-export async function inviteToGroup(groupId: string, nick: string, inviterId: string) {
+export async function inviteToGroup(
+  groupId: string,
+  nick: string,
+  inviterId: string,
+  role: GroupRole = "member",
+) {
   const clean = nick.trim();
   if (clean.length < 2) throw new Error("Podaj nick osoby, którą zapraszasz");
   const { data: profile, error } = await supabase
@@ -124,7 +173,13 @@ export async function inviteToGroup(groupId: string, nick: string, inviterId: st
   if (profile.id === inviterId) throw new Error("Jesteś już w tej grupie");
   const { error: insertError } = await supabase
     .from("group_members")
-    .insert({ group_id: groupId, user_id: profile.id, status: "pending", invited_by: inviterId });
+    .insert({
+      group_id: groupId,
+      user_id: profile.id,
+      status: "pending",
+      invited_by: inviterId,
+      role,
+    });
   if (insertError) {
     if (insertError.code === "23505" || insertError.code === "23514" || insertError.code === "23000") {
       throw new Error("Ta osoba jest już zaproszona albo należy do grupy");
@@ -149,5 +204,11 @@ export async function acceptInvite(memberId: string) {
 /** Odrzucenie zaproszenia albo wyjście / usunięcie z grupy. */
 export async function removeMembership(memberId: string) {
   const { error } = await supabase.from("group_members").delete().eq("id", memberId);
+  if (error) throw error;
+}
+
+/** Zmiana roli członka — tylko właściciel grupy (pilnuje tego baza). */
+export async function setMemberRole(memberId: string, role: GroupRole) {
+  const { error } = await supabase.from("group_members").update({ role }).eq("id", memberId);
   if (error) throw error;
 }

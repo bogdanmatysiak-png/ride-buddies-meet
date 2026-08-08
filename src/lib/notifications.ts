@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 export type AppNotification = {
   id: string;
   rideId: string | null;
+  groupId: string | null;
   title: string;
   body: string;
   readAt: string | null;
@@ -16,7 +17,7 @@ export const notificationsHistoryQueryKey = (userId: string) =>
 export async function fetchNotifications(userId: string): Promise<AppNotification[]> {
   const { data, error } = await supabase
     .from("notifications")
-    .select("id, ride_id, title, body, read_at, created_at")
+    .select("id, ride_id, group_id, title, body, read_at, created_at")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(30);
@@ -24,6 +25,7 @@ export async function fetchNotifications(userId: string): Promise<AppNotificatio
   return (data ?? []).map((n) => ({
     id: n.id,
     rideId: n.ride_id,
+    groupId: n.group_id,
     title: n.title,
     body: n.body,
     readAt: n.read_at,
@@ -44,7 +46,7 @@ export async function markNotificationsRead(userId: string) {
 export async function fetchNotificationHistory(userId: string): Promise<AppNotification[]> {
   const { data, error } = await supabase
     .from("notifications")
-    .select("id, ride_id, title, body, read_at, created_at")
+    .select("id, ride_id, group_id, title, body, read_at, created_at")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(200);
@@ -52,6 +54,7 @@ export async function fetchNotificationHistory(userId: string): Promise<AppNotif
   return (data ?? []).map((n) => ({
     id: n.id,
     rideId: n.ride_id,
+    groupId: n.group_id,
     title: n.title,
     body: n.body,
     readAt: n.read_at,
