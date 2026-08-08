@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -15,7 +15,10 @@ import {
   inviteToGroup,
   removeMembership,
   renameGroup,
+  setMemberRole,
+  groupRoleLabel,
   type Group,
+  type GroupRole,
 } from "@/lib/groups";
 
 export const Route = createFileRoute("/_authenticated/grupy")({
@@ -113,7 +116,15 @@ function GroupsPage() {
 
       {invites.length > 0 && (
         <section className="mt-8">
-          <h2 className="text-3xl text-foreground">Zaproszenia dla Ciebie</h2>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-3xl text-foreground">Zaproszenia dla Ciebie</h2>
+            <Link
+              to="/zaproszenia"
+              className="text-[11px] font-semibold uppercase tracking-wider text-primary hover:underline"
+            >
+              Ekran zaproszeń
+            </Link>
+          </div>
           <ul className="mt-3 space-y-2">
             {invites.map((invite) => (
               <li
@@ -123,6 +134,9 @@ function GroupsPage() {
                 <span className="text-sm text-foreground">
                   Zaproszenie do grupy{" "}
                   <span className="font-semibold text-primary">{invite.groupName}</span>
+                  <span className="ml-1 text-xs text-muted-foreground">
+                    (rola: {groupRoleLabel[invite.role]})
+                  </span>
                 </span>
                 <div className="flex gap-2">
                   <button
