@@ -20,6 +20,7 @@ export type Database = {
           group_id: string
           id: string
           invited_by: string | null
+          role: Database["public"]["Enums"]["group_role"]
           status: Database["public"]["Enums"]["group_member_status"]
           updated_at: string
           user_id: string
@@ -29,6 +30,7 @@ export type Database = {
           group_id: string
           id?: string
           invited_by?: string | null
+          role?: Database["public"]["Enums"]["group_role"]
           status?: Database["public"]["Enums"]["group_member_status"]
           updated_at?: string
           user_id: string
@@ -38,6 +40,7 @@ export type Database = {
           group_id?: string
           id?: string
           invited_by?: string | null
+          role?: Database["public"]["Enums"]["group_role"]
           status?: Database["public"]["Enums"]["group_member_status"]
           updated_at?: string
           user_id?: string
@@ -80,6 +83,7 @@ export type Database = {
         Row: {
           body: string
           created_at: string
+          group_id: string | null
           id: string
           read_at: string | null
           ride_id: string | null
@@ -90,6 +94,7 @@ export type Database = {
         Insert: {
           body?: string
           created_at?: string
+          group_id?: string | null
           id?: string
           read_at?: string | null
           ride_id?: string | null
@@ -100,6 +105,7 @@ export type Database = {
         Update: {
           body?: string
           created_at?: string
+          group_id?: string | null
           id?: string
           read_at?: string | null
           ride_id?: string | null
@@ -108,6 +114,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "notifications_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "notifications_ride_id_fkey"
             columns: ["ride_id"]
@@ -378,6 +391,7 @@ export type Database = {
     Enums: {
       app_role: "admin" | "moderator" | "user"
       group_member_status: "pending" | "accepted"
+      group_role: "owner" | "moderator" | "member"
       ride_level: "chill" | "sport" | "adventure"
     }
     CompositeTypes: {
@@ -508,6 +522,7 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "moderator", "user"],
       group_member_status: ["pending", "accepted"],
+      group_role: ["owner", "moderator", "member"],
       ride_level: ["chill", "sport", "adventure"],
     },
   },
