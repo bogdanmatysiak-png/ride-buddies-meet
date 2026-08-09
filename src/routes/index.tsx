@@ -4,6 +4,7 @@ import { useState } from "react";
 import heroImage from "@/assets/hero-ride.jpg";
 import { RideCard } from "@/components/RideCard";
 import { NearbyFilter } from "@/components/NearbyFilter";
+import { RideAlertPanel } from "@/components/RideAlertPanel";
 import { useNearbyRides } from "@/hooks/useNearbyRides";
 import { fetchRides, levelLabel, ridesQueryKey, type RideLevel } from "@/lib/rides";
 import { useSession } from "@/hooks/useAuth";
@@ -142,6 +143,14 @@ function Index() {
             onAddress={nearby.setOriginFromAddress}
             onError={nearby.setError}
             onClear={nearby.clearOrigin}
+          />
+        )}
+        {user && (
+          <RideAlertPanel
+            userId={user.id}
+            origin={nearby.origin}
+            originLabel={nearby.originLabel}
+            radius={nearby.radius}
           />
         )}
         <div className="mt-5 space-y-3">
