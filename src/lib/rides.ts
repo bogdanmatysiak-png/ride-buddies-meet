@@ -22,6 +22,9 @@ export type Ride = {
   groupName: string | null;
   riderIds: string[];
   riders: string[];
+  encodedPolyline: string | null;
+  cameras: number | null;
+  sectionChecks: number | null;
 };
 
 export const levelLabel: Record<RideLevel, string> = {
