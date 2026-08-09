@@ -184,6 +184,9 @@ export async function updateRide(rideId: string, input: NewRideInput) {
       intercom: input.intercom,
       intercom_type: input.intercom ? input.intercomType : "",
       group_id: input.groupId ?? null,
+      encoded_polyline: input.encodedPolyline ?? null,
+      cameras: input.cameras ?? null,
+      section_checks: input.sectionChecks ?? null,
     })
     .eq("id", rideId);
   if (error) throw error;
