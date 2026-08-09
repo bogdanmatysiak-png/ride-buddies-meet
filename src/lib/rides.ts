@@ -85,6 +85,7 @@ export async function fetchRides(): Promise<Ride[]> {
       encodedPolyline: r.encoded_polyline ?? null,
       cameras: r.cameras ?? null,
       sectionChecks: r.section_checks ?? null,
+      cameraSources: r.camera_sources ?? [],
     };
   });
 }
