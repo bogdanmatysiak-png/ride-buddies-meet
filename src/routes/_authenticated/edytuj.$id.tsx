@@ -304,10 +304,17 @@ function EditRide() {
           </button>
           {planError && <p className="mt-2 text-xs text-destructive">{planError}</p>}
           {plan && (
+            <>
             <p className="mt-3 text-sm text-muted-foreground">
               {plan.km} km · ok. {Math.floor(plan.minutes / 60)} h {plan.minutes % 60} min jazdy ·{" "}
               {plan.turns} zakrętów · {prefsSummary(prefs)}
             </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {plan.cameras === null && plan.sectionChecks === null
+                ? "Fotoradary: brak danych dla tej trasy"
+                : `Fotoradary: ${plan.cameras ?? 0} · odcinkowe pomiary prędkości: ${plan.sectionChecks ?? 0} (dane OpenStreetMap)`}
+            </p>
+            </>
           )}
           {start.length > 1 && end.length > 1 && (
             <RouteMap start={start} end={end} waypoints={waypoints} prefs={prefs} className="mt-3" />
