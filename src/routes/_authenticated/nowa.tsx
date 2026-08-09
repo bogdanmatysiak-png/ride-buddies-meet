@@ -6,6 +6,7 @@ import { createRide, levelLabel, ridesQueryKey, type RideLevel } from "@/lib/rid
 import { fetchMyGroups, groupsQueryKey } from "@/lib/groups";
 import { GroupPicker } from "@/components/GroupPicker";
 import { RouteMap } from "@/components/RouteMap";
+import { cameraSourcesText } from "@/lib/camera-sources";
 import { RoutePrefsPicker } from "@/components/RoutePrefsPicker";
 import { WaypointsEditor } from "@/components/WaypointsEditor";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
