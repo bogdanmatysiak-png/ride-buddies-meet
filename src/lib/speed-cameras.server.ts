@@ -73,17 +73,17 @@ relation(around:${radiusMeters},${coords})["type"="enforcement"]["enforcement"="
     };
     const elements = payload.elements ?? [];
     const sectionIds = new Set<string>();
-    let cameras = 0;
+    const cameraIds = new Set<string>();
     for (const el of elements) {
       if (el.type === "node" && el.tags?.["highway"] === "speed_camera") {
         // Kamery należące do odcinkowego pomiaru policzymy jako odcinek, nie pojedynczy fotoradar.
         if (el.tags?.["enforcement"] === "average_speed") continue;
-        cameras += 1;
+        cameraIds.add(`node:${el.id}`);
         continue;
       }
       sectionIds.add(`${el.type}:${el.id}`);
     }
-    return { cameras, sections: sectionIds.size };
+    return { cameras: cameraIds.size, sections: sectionIds.size };
   } catch (error) {
     console.error("Overpass request error", error);
     return null;
