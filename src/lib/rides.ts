@@ -119,6 +119,9 @@ export type NewRideInput = {
   intercom: boolean;
   intercomType: string;
   groupId?: string | null;
+  encodedPolyline?: string | null;
+  cameras?: number | null;
+  sectionChecks?: number | null;
 };
 
 export async function createRide(
@@ -143,6 +146,9 @@ export async function createRide(
       intercom: input.intercom,
       intercom_type: input.intercom ? input.intercomType : "",
       group_id: input.groupId ?? null,
+      encoded_polyline: input.encodedPolyline ?? null,
+      cameras: input.cameras ?? null,
+      section_checks: input.sectionChecks ?? null,
     })
     .select("id")
     .single();
