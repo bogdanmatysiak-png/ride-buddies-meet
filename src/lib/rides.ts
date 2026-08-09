@@ -82,6 +82,9 @@ export async function fetchRides(): Promise<Ride[]> {
       groupName: r.groups?.name ?? null,
       riderIds,
       riders: riderIds.map((id) => nickById.get(id) ?? "Motocyklista"),
+      encodedPolyline: r.encoded_polyline ?? null,
+      cameras: r.cameras ?? null,
+      sectionChecks: r.section_checks ?? null,
     };
   });
 }
