@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { countSpeedEnforcement } from "./speed-cameras.server";
 
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/google_maps";
 
@@ -20,6 +21,10 @@ export type RoutePlan = {
   endAddress: string;
   waypoints: string[];
   turns: number;
+  /** Liczba fotoradarów na trasie (OpenStreetMap); null gdy dane niedostępne. */
+  cameras: number | null;
+  /** Liczba odcinkowych pomiarów prędkości na trasie; null gdy dane niedostępne. */
+  sectionChecks: number | null;
 };
 
 export const planRoute = createServerFn({ method: "POST" })
@@ -48,7 +53,7 @@ export const planRoute = createServerFn({ method: "POST" })
         "X-Connection-Api-Key": mapsKey,
         "Content-Type": "application/json",
         "X-Goog-FieldMask":
-          "routes.distanceMeters,routes.duration,routes.legs.steps.navigationInstruction.maneuver",
+          "routes.distanceMeters,routes.duration,routes.polyline.encodedPolyline,routes.legs.steps.navigationInstruction.maneuver",
       },
       body: JSON.stringify({
         origin: { address: data.start },
@@ -94,6 +99,7 @@ export const planRoute = createServerFn({ method: "POST" })
       routes?: Array<{
         distanceMeters?: number;
         duration?: string;
+        polyline?: { encodedPolyline?: string };
         legs?: Array<{
           steps?: Array<{ navigationInstruction?: { maneuver?: string } }>;
         }>;
@@ -119,6 +125,8 @@ export const planRoute = createServerFn({ method: "POST" })
     }
 
     const seconds = Number(String(route.duration ?? "0s").replace("s", ""));
+    const encoded = route.polyline?.encodedPolyline;
+    const enforcement = encoded ? await countSpeedEnforcement(encoded) : null;
     return {
       km: Math.round(route.distanceMeters / 1000),
       minutes: Math.round(seconds / 60),
@@ -126,6 +134,8 @@ export const planRoute = createServerFn({ method: "POST" })
       endAddress: data.end,
       waypoints: data.waypoints,
       turns: countTurns(route),
+      cameras: enforcement?.cameras ?? null,
+      sectionChecks: enforcement?.sections ?? null,
     };
   });
 
