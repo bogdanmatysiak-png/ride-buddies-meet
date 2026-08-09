@@ -43,7 +43,61 @@ function sample(points: Array<[number, number]>, max = 250): Array<[number, numb
   return out;
 }
 
-export type SpeedEnforcement = { cameras: number; sections: number };
+export type SpeedEnforcement = {
+  cameras: number;
+  sections: number;
+  /** Źródła, z których pochodzą policzone kontrole prędkości. */
+  sources: string[];
+};
+
+/** Rozpoznaje instalacje prowadzone oficjalnie przez GITD/CANARD. */
+function isGitd(tags: Record<string, string> | undefined): boolean {
+  const raw = `${tags?.["operator"] ?? ""} ${tags?.["operator:short"] ?? ""} ${tags?.["network"] ?? ""}`;
+  return /gitd|canard|inspekcj\w* transportu drogowego/i.test(raw);
+}
+
+function distanceMeters(a: [number, number], b: [number, number]): number {
+  const toRad = (v: number) => (v * Math.PI) / 180;
+  const dLat = toRad(b[0] - a[0]);
+  const dLng = toRad(b[1] - a[1]);
+  const lat = toRad((a[0] + b[0]) / 2);
+  const x = dLng * Math.cos(lat);
+  return Math.sqrt(dLat * dLat + x * x) * 6371000;
+}
+
+type ReportRow = { kind: string; lat: number; lng: number };
+
+/** Zatwierdzone zgłoszenia użytkowników leżące blisko trasy. */
+async function countUserReports(
+  points: Array<[number, number]>,
+  radiusMeters: number,
+): Promise<{ cameras: number; sections: number } | null> {
+  const url = process.env["SUPABASE_URL"];
+  const key = process.env["SUPABASE_PUBLISHABLE_KEY"];
+  if (!url || !key) return null;
+  try {
+    const response = await fetch(
+      `${url}/rest/v1/camera_reports?select=kind,lat,lng&status=eq.approved&limit=5000`,
+      { headers: { apikey: key } },
+    );
+    if (!response.ok) return null;
+    const rows = (await response.json()) as ReportRow[];
+    let cameras = 0;
+    let sections = 0;
+    for (const row of rows) {
+      const near = points.some(
+        (p) => distanceMeters(p, [row.lat, row.lng]) <= radiusMeters,
+      );
+      if (!near) continue;
+      if (row.kind === "section") sections += 1;
+      else cameras += 1;
+    }
+    return { cameras, sections };
+  } catch (error) {
+    console.error("camera_reports fetch error", error);
+    return null;
+  }
+}
 
 export async function countSpeedEnforcement(
   encodedPolyline: string,
@@ -74,7 +128,9 @@ relation(around:${radiusMeters},${coords})["type"="enforcement"]["enforcement"="
     const elements = payload.elements ?? [];
     const sectionIds = new Set<string>();
     const cameraIds = new Set<string>();
+    let gitdHits = 0;
     for (const el of elements) {
+      if (isGitd(el.tags)) gitdHits += 1;
       if (el.type === "node" && el.tags?.["highway"] === "speed_camera") {
         // Kamery należące do odcinkowego pomiaru policzymy jako odcinek, nie pojedynczy fotoradar.
         if (el.tags?.["enforcement"] === "average_speed") continue;
@@ -83,9 +139,19 @@ relation(around:${radiusMeters},${coords})["type"="enforcement"]["enforcement"="
       }
       sectionIds.add(`${el.type}:${el.id}`);
     }
-    return { cameras: cameraIds.size, sections: sectionIds.size };
+    const reports = await countUserReports(points, radiusMeters);
+    const sources: string[] = ["osm"];
+    if (gitdHits > 0) sources.push("gitd");
+    if (reports && reports.cameras + reports.sections > 0) sources.push("users");
+    return {
+      cameras: cameraIds.size + (reports?.cameras ?? 0),
+      sections: sectionIds.size + (reports?.sections ?? 0),
+      sources,
+    };
   } catch (error) {
     console.error("Overpass request error", error);
-    return null;
+    const reports = await countUserReports(points, radiusMeters);
+    if (!reports) return null;
+    return { cameras: reports.cameras, sections: reports.sections, sources: ["users"] };
   }
 }
