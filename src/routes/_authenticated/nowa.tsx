@@ -127,6 +127,9 @@ function NewRide() {
                 intercom,
                 intercomType: intercomType.trim(),
                 groupId,
+                encodedPolyline: plan?.encodedPolyline ?? null,
+                cameras: plan?.cameras ?? null,
+                sectionChecks: plan?.sectionChecks ?? null,
               },
               { id: user.id, nick: profile?.nick ?? "Motocyklista" },
             );

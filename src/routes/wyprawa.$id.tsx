@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CalendarDays, MapPin, Route as RouteIcon, Users } from "lucide-react";
+import { ArrowLeft, CalendarDays, Camera, MapPin, Route as RouteIcon, Users } from "lucide-react";
 import { toast } from "sonner";
 import {
   fetchRides,
@@ -119,6 +119,11 @@ function RideDetail() {
         </Fact>
         <Fact icon={<Users className="h-4 w-4" />} label="Interkom">
           {ride.intercom ? (ride.intercomType ? `Tak — ${ride.intercomType}` : "Tak") : "Nie"}
+        </Fact>
+        <Fact icon={<Camera className="h-4 w-4" />} label="Kontrole prędkości">
+          {ride.cameras === null && ride.sectionChecks === null
+            ? "Brak danych"
+            : `Fotoradary: ${ride.cameras ?? 0} · odcinkowe: ${ride.sectionChecks ?? 0}`}
         </Fact>
         {ride.groupName && (
           <Fact icon={<Users className="h-4 w-4" />} label="Grupa">

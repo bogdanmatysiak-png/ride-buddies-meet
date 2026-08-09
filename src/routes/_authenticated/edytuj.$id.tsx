@@ -211,6 +211,9 @@ function EditRide() {
         intercom,
         intercomType: intercomType.trim(),
         groupId,
+        encodedPolyline: plan?.encodedPolyline ?? ride?.encodedPolyline ?? null,
+        cameras: plan?.cameras ?? ride?.cameras ?? null,
+        sectionChecks: plan?.sectionChecks ?? ride?.sectionChecks ?? null,
       });
       await queryClient.invalidateQueries({ queryKey: ridesQueryKey });
       if (user && changes.length > 0) {

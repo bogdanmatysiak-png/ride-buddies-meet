@@ -21,6 +21,8 @@ export type RoutePlan = {
   endAddress: string;
   waypoints: string[];
   turns: number;
+  /** Zakodowany kształt trasy z Google Maps. */
+  encodedPolyline: string | null;
   /** Liczba fotoradarów na trasie (OpenStreetMap); null gdy dane niedostępne. */
   cameras: number | null;
   /** Liczba odcinkowych pomiarów prędkości na trasie; null gdy dane niedostępne. */
@@ -134,6 +136,7 @@ export const planRoute = createServerFn({ method: "POST" })
       endAddress: data.end,
       waypoints: data.waypoints,
       turns: countTurns(route),
+      encodedPolyline: encoded ?? null,
       cameras: enforcement?.cameras ?? null,
       sectionChecks: enforcement?.sections ?? null,
     };

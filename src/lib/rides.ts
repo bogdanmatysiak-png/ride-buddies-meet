@@ -22,6 +22,9 @@ export type Ride = {
   groupName: string | null;
   riderIds: string[];
   riders: string[];
+  encodedPolyline: string | null;
+  cameras: number | null;
+  sectionChecks: number | null;
 };
 
 export const levelLabel: Record<RideLevel, string> = {
@@ -79,6 +82,9 @@ export async function fetchRides(): Promise<Ride[]> {
       groupName: r.groups?.name ?? null,
       riderIds,
       riders: riderIds.map((id) => nickById.get(id) ?? "Motocyklista"),
+      encodedPolyline: r.encoded_polyline ?? null,
+      cameras: r.cameras ?? null,
+      sectionChecks: r.section_checks ?? null,
     };
   });
 }
@@ -113,6 +119,9 @@ export type NewRideInput = {
   intercom: boolean;
   intercomType: string;
   groupId?: string | null;
+  encodedPolyline?: string | null;
+  cameras?: number | null;
+  sectionChecks?: number | null;
 };
 
 export async function createRide(
@@ -137,6 +146,9 @@ export async function createRide(
       intercom: input.intercom,
       intercom_type: input.intercom ? input.intercomType : "",
       group_id: input.groupId ?? null,
+      encoded_polyline: input.encodedPolyline ?? null,
+      cameras: input.cameras ?? null,
+      section_checks: input.sectionChecks ?? null,
     })
     .select("id")
     .single();
@@ -172,6 +184,9 @@ export async function updateRide(rideId: string, input: NewRideInput) {
       intercom: input.intercom,
       intercom_type: input.intercom ? input.intercomType : "",
       group_id: input.groupId ?? null,
+      encoded_polyline: input.encodedPolyline ?? null,
+      cameras: input.cameras ?? null,
+      section_checks: input.sectionChecks ?? null,
     })
     .eq("id", rideId);
   if (error) throw error;
