@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CalendarDays, MapPin, Route as RouteIcon, Users } from "lucide-react";
+import { ArrowLeft, CalendarDays, Camera, MapPin, Route as RouteIcon, Users } from "lucide-react";
 import { toast } from "sonner";
 import {
   fetchRides,
