@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { RADIUS_OPTIONS, getBrowserLocation, type RadiusOption } from "@/lib/geo";
+import { NearbyRadiusMap, type RideMarker } from "@/components/NearbyRadiusMap";
+import type { Coords } from "@/lib/geo";
 
 type Props = {
   originLabel: string;
@@ -7,6 +9,8 @@ type Props = {
   error: string | null;
   isLoading: boolean;
   hasOrigin: boolean;
+  origin: Coords | null;
+  markers: RideMarker[];
   onRadius: (r: RadiusOption | null) => void;
   onCoords: (coords: { lat: number; lng: number }, label: string) => void;
   onAddress: (address: string) => void;
@@ -20,6 +24,8 @@ export function NearbyFilter({
   error,
   isLoading,
   hasOrigin,
+  origin,
+  markers,
   onRadius,
   onCoords,
   onAddress,
@@ -28,6 +34,7 @@ export function NearbyFilter({
 }: Props) {
   const [city, setCity] = useState("");
   const [locating, setLocating] = useState(false);
+  const [showMap, setShowMap] = useState(false);
 
   const useMyLocation = async () => {
     setLocating(true);
@@ -116,6 +123,23 @@ export function NearbyFilter({
               : `Lokalizacja: ${originLabel}. Wybierz promień.`
             : "Wskaż punkt odniesienia, a pokażemy tylko wyprawy startujące w wybranym promieniu."}
       </p>
+
+      <button
+        onClick={() => setShowMap((v) => !v)}
+        className="mt-3 rounded-md border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:border-primary/60"
+      >
+        {showMap ? "Ukryj mapę promienia" : "Wyznacz promień na mapie"}
+      </button>
+
+      {showMap && (
+        <NearbyRadiusMap
+          origin={origin}
+          radius={radius}
+          markers={markers}
+          onOrigin={onCoords}
+          onRadius={onRadius}
+        />
+      )}
     </div>
   );
 }
