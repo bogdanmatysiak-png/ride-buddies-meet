@@ -240,6 +240,12 @@ function AuthNav() {
       >
         Profil
       </Link>
+      <Link
+        to="/zglos-fotoradar"
+        className="rounded-md border border-border px-3 py-1.5 text-sm font-semibold text-foreground transition-colors hover:border-primary/60"
+      >
+        Zgłoś fotoradar
+      </Link>
       <button
         onClick={async () => {
           await queryClient.cancelQueries();
