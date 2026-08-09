@@ -192,6 +192,11 @@ function NewRide() {
                 {" · "}
                 {plan.turns} zakrętów · {prefsSummary(prefs)}
               </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {plan.cameras === null && plan.sectionChecks === null
+                  ? "Fotoradary: brak danych dla tej trasy"
+                  : `Fotoradary: ${plan.cameras ?? 0} · odcinkowe pomiary prędkości: ${plan.sectionChecks ?? 0} (dane OpenStreetMap)`}
+              </p>
               <RouteMap
                 start={plan.startAddress}
                 end={plan.endAddress}
