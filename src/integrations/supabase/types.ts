@@ -314,8 +314,10 @@ export type Database = {
       }
       rides: {
         Row: {
+          cameras: number | null
           created_at: string
           description: string
+          encoded_polyline: string | null
           end_point: string
           group_id: string | null
           host_id: string | null
@@ -327,14 +329,17 @@ export type Database = {
           level: Database["public"]["Enums"]["ride_level"]
           ride_date: string
           ride_time: string
+          section_checks: number | null
           spots: number
           start_point: string
           title: string
           waypoints: string[]
         }
         Insert: {
+          cameras?: number | null
           created_at?: string
           description?: string
+          encoded_polyline?: string | null
           end_point: string
           group_id?: string | null
           host_id?: string | null
@@ -346,14 +351,17 @@ export type Database = {
           level?: Database["public"]["Enums"]["ride_level"]
           ride_date: string
           ride_time: string
+          section_checks?: number | null
           spots?: number
           start_point: string
           title: string
           waypoints?: string[]
         }
         Update: {
+          cameras?: number | null
           created_at?: string
           description?: string
+          encoded_polyline?: string | null
           end_point?: string
           group_id?: string | null
           host_id?: string | null
@@ -365,6 +373,7 @@ export type Database = {
           level?: Database["public"]["Enums"]["ride_level"]
           ride_date?: string
           ride_time?: string
+          section_checks?: number | null
           spots?: number
           start_point?: string
           title?: string
