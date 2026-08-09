@@ -120,6 +120,11 @@ function RideDetail() {
         <Fact icon={<Users className="h-4 w-4" />} label="Interkom">
           {ride.intercom ? (ride.intercomType ? `Tak — ${ride.intercomType}` : "Tak") : "Nie"}
         </Fact>
+        <Fact icon={<Camera className="h-4 w-4" />} label="Kontrole prędkości">
+          {ride.cameras === null && ride.sectionChecks === null
+            ? "Brak danych"
+            : `Fotoradary: ${ride.cameras ?? 0} · odcinkowe: ${ride.sectionChecks ?? 0}`}
+        </Fact>
         {ride.groupName && (
           <Fact icon={<Users className="h-4 w-4" />} label="Grupa">
             {ride.groupName}
