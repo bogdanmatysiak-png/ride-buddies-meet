@@ -136,6 +136,7 @@ export const planRoute = createServerFn({ method: "POST" })
       endAddress: data.end,
       waypoints: data.waypoints,
       turns: countTurns(route),
+      encodedPolyline: encoded ?? null,
       cameras: enforcement?.cameras ?? null,
       sectionChecks: enforcement?.sections ?? null,
     };
