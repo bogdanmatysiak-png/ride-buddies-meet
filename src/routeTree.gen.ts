@@ -24,6 +24,7 @@ import { Route as MotocyklistaIdRouteImport } from './routes/motocyklista.$id'
 import { Route as WyprawaIdRouteImport } from './routes/wyprawa.$id'
 import { Route as AuthenticatedEdytujIdRouteImport } from './routes/_authenticated/edytuj.$id'
 import { Route as AuthenticatedGrupaIdRouteImport } from './routes/_authenticated/grupa.$id'
+import { Route as ApiPublicRideAlertsRouteImport } from './routes/api/public/ride-alerts'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -102,6 +103,11 @@ const AuthenticatedGrupaIdRoute = AuthenticatedGrupaIdRouteImport.update({
   path: '/grupa/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiPublicRideAlertsRoute = ApiPublicRideAlertsRouteImport.update({
+  id: '/api/public/ride-alerts',
+  path: '/api/public/ride-alerts',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -118,6 +124,7 @@ export interface FileRoutesByFullPath {
   '/wyprawa/$id': typeof WyprawaIdRoute
   '/edytuj/$id': typeof AuthenticatedEdytujIdRoute
   '/grupa/$id': typeof AuthenticatedGrupaIdRoute
+  '/api/public/ride-alerts': typeof ApiPublicRideAlertsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -134,6 +141,7 @@ export interface FileRoutesByTo {
   '/wyprawa/$id': typeof WyprawaIdRoute
   '/edytuj/$id': typeof AuthenticatedEdytujIdRoute
   '/grupa/$id': typeof AuthenticatedGrupaIdRoute
+  '/api/public/ride-alerts': typeof ApiPublicRideAlertsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -152,6 +160,7 @@ export interface FileRoutesById {
   '/wyprawa/$id': typeof WyprawaIdRoute
   '/_authenticated/edytuj/$id': typeof AuthenticatedEdytujIdRoute
   '/_authenticated/grupa/$id': typeof AuthenticatedGrupaIdRoute
+  '/api/public/ride-alerts': typeof ApiPublicRideAlertsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -170,6 +179,7 @@ export interface FileRouteTypes {
     | '/wyprawa/$id'
     | '/edytuj/$id'
     | '/grupa/$id'
+    | '/api/public/ride-alerts'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -186,6 +196,7 @@ export interface FileRouteTypes {
     | '/wyprawa/$id'
     | '/edytuj/$id'
     | '/grupa/$id'
+    | '/api/public/ride-alerts'
   id:
     | '__root__'
     | '/'
@@ -203,6 +214,7 @@ export interface FileRouteTypes {
     | '/wyprawa/$id'
     | '/_authenticated/edytuj/$id'
     | '/_authenticated/grupa/$id'
+    | '/api/public/ride-alerts'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -212,6 +224,7 @@ export interface RootRouteChildren {
   RankingRoute: typeof RankingRoute
   MotocyklistaIdRoute: typeof MotocyklistaIdRoute
   WyprawaIdRoute: typeof WyprawaIdRoute
+  ApiPublicRideAlertsRoute: typeof ApiPublicRideAlertsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -321,6 +334,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedGrupaIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/public/ride-alerts': {
+      id: '/api/public/ride-alerts'
+      path: '/api/public/ride-alerts'
+      fullPath: '/api/public/ride-alerts'
+      preLoaderRoute: typeof ApiPublicRideAlertsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -358,6 +378,7 @@ const rootRouteChildren: RootRouteChildren = {
   RankingRoute: RankingRoute,
   MotocyklistaIdRoute: MotocyklistaIdRoute,
   WyprawaIdRoute: WyprawaIdRoute,
+  ApiPublicRideAlertsRoute: ApiPublicRideAlertsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
