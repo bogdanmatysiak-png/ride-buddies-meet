@@ -53,10 +53,10 @@ export async function countSpeedEnforcement(
   if (points.length < 2) return null;
   const coords = points.map(([lat, lng]) => `${lat.toFixed(5)},${lng.toFixed(5)}`).join(",");
   const query = `[out:json][timeout:45];
-node(around:${radiusMeters},${coords})["highway"="speed_camera"];out ids;
-node(around:${radiusMeters},${coords})["enforcement"="average_speed"];out ids;
-way(around:${radiusMeters},${coords})["enforcement"="average_speed"];out ids;
-relation(around:${radiusMeters},${coords})["type"="enforcement"]["enforcement"="average_speed"];out ids;`;
+node(around:${radiusMeters},${coords})["highway"="speed_camera"];out tags;
+node(around:${radiusMeters},${coords})["enforcement"="average_speed"];out tags;
+way(around:${radiusMeters},${coords})["enforcement"="average_speed"];out tags;
+relation(around:${radiusMeters},${coords})["type"="enforcement"]["enforcement"="average_speed"];out tags;`;
 
   try {
     const response = await fetch(OVERPASS_URL, {
