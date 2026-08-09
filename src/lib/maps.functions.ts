@@ -27,6 +27,8 @@ export type RoutePlan = {
   cameras: number | null;
   /** Liczba odcinkowych pomiarów prędkości na trasie; null gdy dane niedostępne. */
   sectionChecks: number | null;
+  /** Źródła danych o kontrolach prędkości (osm, gitd, users). */
+  cameraSources: string[];
 };
 
 export const planRoute = createServerFn({ method: "POST" })
@@ -139,6 +141,7 @@ export const planRoute = createServerFn({ method: "POST" })
       encodedPolyline: encoded ?? null,
       cameras: enforcement?.cameras ?? null,
       sectionChecks: enforcement?.sections ?? null,
+      cameraSources: enforcement?.sources ?? [],
     };
   });
 

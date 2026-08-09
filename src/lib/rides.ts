@@ -25,6 +25,7 @@ export type Ride = {
   encodedPolyline: string | null;
   cameras: number | null;
   sectionChecks: number | null;
+  cameraSources: string[];
 };
 
 export const levelLabel: Record<RideLevel, string> = {
@@ -85,6 +86,7 @@ export async function fetchRides(): Promise<Ride[]> {
       encodedPolyline: r.encoded_polyline ?? null,
       cameras: r.cameras ?? null,
       sectionChecks: r.section_checks ?? null,
+      cameraSources: r.camera_sources ?? [],
     };
   });
 }
@@ -122,6 +124,7 @@ export type NewRideInput = {
   encodedPolyline?: string | null;
   cameras?: number | null;
   sectionChecks?: number | null;
+  cameraSources?: string[];
 };
 
 export async function createRide(
@@ -149,6 +152,7 @@ export async function createRide(
       encoded_polyline: input.encodedPolyline ?? null,
       cameras: input.cameras ?? null,
       section_checks: input.sectionChecks ?? null,
+      camera_sources: input.cameraSources ?? [],
     })
     .select("id")
     .single();
@@ -187,6 +191,7 @@ export async function updateRide(rideId: string, input: NewRideInput) {
       encoded_polyline: input.encodedPolyline ?? null,
       cameras: input.cameras ?? null,
       section_checks: input.sectionChecks ?? null,
+      camera_sources: input.cameraSources ?? [],
     })
     .eq("id", rideId);
   if (error) throw error;

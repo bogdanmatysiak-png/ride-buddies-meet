@@ -11,6 +11,7 @@ import {
   type RideLevel,
 } from "@/lib/rides";
 import { RouteMap } from "@/components/RouteMap";
+import { cameraSourcesText } from "@/lib/camera-sources";
 import { RoutePrefsPicker } from "@/components/RoutePrefsPicker";
 import { WaypointsEditor } from "@/components/WaypointsEditor";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
@@ -214,6 +215,7 @@ function EditRide() {
         encodedPolyline: plan?.encodedPolyline ?? ride?.encodedPolyline ?? null,
         cameras: plan?.cameras ?? ride?.cameras ?? null,
         sectionChecks: plan?.sectionChecks ?? ride?.sectionChecks ?? null,
+        cameraSources: plan?.cameraSources ?? ride?.cameraSources ?? [],
       });
       await queryClient.invalidateQueries({ queryKey: ridesQueryKey });
       if (user && changes.length > 0) {
@@ -315,7 +317,7 @@ function EditRide() {
             <p className="mt-1 text-xs text-muted-foreground">
               {plan.cameras === null && plan.sectionChecks === null
                 ? "Fotoradary: brak danych dla tej trasy"
-                : `Fotoradary: ${plan.cameras ?? 0} · odcinkowe pomiary prędkości: ${plan.sectionChecks ?? 0} (dane OpenStreetMap)`}
+                : `Fotoradary: ${plan.cameras ?? 0} · odcinkowe pomiary prędkości: ${plan.sectionChecks ?? 0} (źródła: ${cameraSourcesText(plan.cameraSources)})`}
             </p>
             </>
           )}

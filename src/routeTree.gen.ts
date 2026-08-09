@@ -19,6 +19,7 @@ import { Route as AuthenticatedNowaRouteImport } from './routes/_authenticated/n
 import { Route as AuthenticatedPowiadomieniaRouteImport } from './routes/_authenticated/powiadomienia'
 import { Route as AuthenticatedProfilRouteImport } from './routes/_authenticated/profil'
 import { Route as AuthenticatedZaproszeniaRouteImport } from './routes/_authenticated/zaproszenia'
+import { Route as AuthenticatedZglosFotoradarRouteImport } from './routes/_authenticated/zglos-fotoradar'
 import { Route as MotocyklistaIdRouteImport } from './routes/motocyklista.$id'
 import { Route as WyprawaIdRouteImport } from './routes/wyprawa.$id'
 import { Route as AuthenticatedEdytujIdRouteImport } from './routes/_authenticated/edytuj.$id'
@@ -75,6 +76,12 @@ const AuthenticatedZaproszeniaRoute =
     path: '/zaproszenia',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedZglosFotoradarRoute =
+  AuthenticatedZglosFotoradarRouteImport.update({
+    id: '/zglos-fotoradar',
+    path: '/zglos-fotoradar',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const MotocyklistaIdRoute = MotocyklistaIdRouteImport.update({
   id: '/motocyklista/$id',
   path: '/motocyklista/$id',
@@ -106,6 +113,7 @@ export interface FileRoutesByFullPath {
   '/powiadomienia': typeof AuthenticatedPowiadomieniaRoute
   '/profil': typeof AuthenticatedProfilRoute
   '/zaproszenia': typeof AuthenticatedZaproszeniaRoute
+  '/zglos-fotoradar': typeof AuthenticatedZglosFotoradarRoute
   '/motocyklista/$id': typeof MotocyklistaIdRoute
   '/wyprawa/$id': typeof WyprawaIdRoute
   '/edytuj/$id': typeof AuthenticatedEdytujIdRoute
@@ -121,6 +129,7 @@ export interface FileRoutesByTo {
   '/powiadomienia': typeof AuthenticatedPowiadomieniaRoute
   '/profil': typeof AuthenticatedProfilRoute
   '/zaproszenia': typeof AuthenticatedZaproszeniaRoute
+  '/zglos-fotoradar': typeof AuthenticatedZglosFotoradarRoute
   '/motocyklista/$id': typeof MotocyklistaIdRoute
   '/wyprawa/$id': typeof WyprawaIdRoute
   '/edytuj/$id': typeof AuthenticatedEdytujIdRoute
@@ -138,6 +147,7 @@ export interface FileRoutesById {
   '/_authenticated/powiadomienia': typeof AuthenticatedPowiadomieniaRoute
   '/_authenticated/profil': typeof AuthenticatedProfilRoute
   '/_authenticated/zaproszenia': typeof AuthenticatedZaproszeniaRoute
+  '/_authenticated/zglos-fotoradar': typeof AuthenticatedZglosFotoradarRoute
   '/motocyklista/$id': typeof MotocyklistaIdRoute
   '/wyprawa/$id': typeof WyprawaIdRoute
   '/_authenticated/edytuj/$id': typeof AuthenticatedEdytujIdRoute
@@ -155,6 +165,7 @@ export interface FileRouteTypes {
     | '/powiadomienia'
     | '/profil'
     | '/zaproszenia'
+    | '/zglos-fotoradar'
     | '/motocyklista/$id'
     | '/wyprawa/$id'
     | '/edytuj/$id'
@@ -170,6 +181,7 @@ export interface FileRouteTypes {
     | '/powiadomienia'
     | '/profil'
     | '/zaproszenia'
+    | '/zglos-fotoradar'
     | '/motocyklista/$id'
     | '/wyprawa/$id'
     | '/edytuj/$id'
@@ -186,6 +198,7 @@ export interface FileRouteTypes {
     | '/_authenticated/powiadomienia'
     | '/_authenticated/profil'
     | '/_authenticated/zaproszenia'
+    | '/_authenticated/zglos-fotoradar'
     | '/motocyklista/$id'
     | '/wyprawa/$id'
     | '/_authenticated/edytuj/$id'
@@ -273,6 +286,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedZaproszeniaRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/zglos-fotoradar': {
+      id: '/_authenticated/zglos-fotoradar'
+      path: '/zglos-fotoradar'
+      fullPath: '/zglos-fotoradar'
+      preLoaderRoute: typeof AuthenticatedZglosFotoradarRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/motocyklista/$id': {
       id: '/motocyklista/$id'
       path: '/motocyklista/$id'
@@ -311,6 +331,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPowiadomieniaRoute: typeof AuthenticatedPowiadomieniaRoute
   AuthenticatedProfilRoute: typeof AuthenticatedProfilRoute
   AuthenticatedZaproszeniaRoute: typeof AuthenticatedZaproszeniaRoute
+  AuthenticatedZglosFotoradarRoute: typeof AuthenticatedZglosFotoradarRoute
   AuthenticatedEdytujIdRoute: typeof AuthenticatedEdytujIdRoute
   AuthenticatedGrupaIdRoute: typeof AuthenticatedGrupaIdRoute
 }
@@ -322,6 +343,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPowiadomieniaRoute: AuthenticatedPowiadomieniaRoute,
   AuthenticatedProfilRoute: AuthenticatedProfilRoute,
   AuthenticatedZaproszeniaRoute: AuthenticatedZaproszeniaRoute,
+  AuthenticatedZglosFotoradarRoute: AuthenticatedZglosFotoradarRoute,
   AuthenticatedEdytujIdRoute: AuthenticatedEdytujIdRoute,
   AuthenticatedGrupaIdRoute: AuthenticatedGrupaIdRoute,
 }
@@ -340,13 +362,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

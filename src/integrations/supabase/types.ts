@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      camera_reports: {
+        Row: {
+          address: string
+          created_at: string
+          description: string
+          id: string
+          kind: string
+          lat: number
+          lng: number
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address?: string
+          created_at?: string
+          description?: string
+          id?: string
+          kind?: string
+          lat: number
+          lng: number
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address?: string
+          created_at?: string
+          description?: string
+          id?: string
+          kind?: string
+          lat?: number
+          lng?: number
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       group_members: {
         Row: {
           created_at: string
@@ -314,6 +353,7 @@ export type Database = {
       }
       rides: {
         Row: {
+          camera_sources: string[]
           cameras: number | null
           created_at: string
           description: string
@@ -336,6 +376,7 @@ export type Database = {
           waypoints: string[]
         }
         Insert: {
+          camera_sources?: string[]
           cameras?: number | null
           created_at?: string
           description?: string
@@ -358,6 +399,7 @@ export type Database = {
           waypoints?: string[]
         }
         Update: {
+          camera_sources?: string[]
           cameras?: number | null
           created_at?: string
           description?: string

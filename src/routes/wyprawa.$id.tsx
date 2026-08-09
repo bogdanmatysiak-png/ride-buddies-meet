@@ -17,6 +17,7 @@ import { useIsAdmin, useSession } from "@/hooks/useAuth";
 import { RouteMap } from "@/components/RouteMap";
 import { RideChat } from "@/components/RideChat";
 import { RideRatings } from "@/components/RideRatings";
+import { cameraSourcesText } from "@/lib/camera-sources";
 
 export const Route = createFileRoute("/wyprawa/$id")({
   head: () => ({
@@ -124,6 +125,17 @@ function RideDetail() {
           {ride.cameras === null && ride.sectionChecks === null
             ? "Brak danych"
             : `Fotoradary: ${ride.cameras ?? 0} · odcinkowe: ${ride.sectionChecks ?? 0}`}
+          {(ride.cameras !== null || ride.sectionChecks !== null) && (
+            <span className="mt-1 block text-[11px] font-normal text-muted-foreground">
+              Źródła: {cameraSourcesText(ride.cameraSources)}
+            </span>
+          )}
+          <Link
+            to="/zglos-fotoradar"
+            className="mt-1 block text-[11px] font-semibold uppercase tracking-wider text-primary"
+          >
+            Zgłoś fotoradar
+          </Link>
         </Fact>
         {ride.groupName && (
           <Fact icon={<Users className="h-4 w-4" />} label="Grupa">
