@@ -252,6 +252,80 @@ export type Database = {
         }
         Relationships: []
       }
+      ride_alert_deliveries: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          ride_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          ride_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          ride_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ride_alert_deliveries_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "rides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ride_alerts: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          hours_before: number
+          label: string
+          lat: number
+          lng: number
+          notify_new: boolean
+          notify_soon: boolean
+          radius_km: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          hours_before?: number
+          label?: string
+          lat: number
+          lng: number
+          notify_new?: boolean
+          notify_soon?: boolean
+          radius_km?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          hours_before?: number
+          label?: string
+          lat?: number
+          lng?: number
+          notify_new?: boolean
+          notify_soon?: boolean
+          radius_km?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       ride_messages: {
         Row: {
           body: string
@@ -371,6 +445,8 @@ export type Database = {
           ride_time: string
           section_checks: number | null
           spots: number
+          start_lat: number | null
+          start_lng: number | null
           start_point: string
           title: string
           waypoints: string[]
@@ -394,6 +470,8 @@ export type Database = {
           ride_time: string
           section_checks?: number | null
           spots?: number
+          start_lat?: number | null
+          start_lng?: number | null
           start_point: string
           title: string
           waypoints?: string[]
@@ -417,6 +495,8 @@ export type Database = {
           ride_time?: string
           section_checks?: number | null
           spots?: number
+          start_lat?: number | null
+          start_lng?: number | null
           start_point?: string
           title?: string
           waypoints?: string[]
