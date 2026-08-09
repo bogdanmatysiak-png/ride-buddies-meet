@@ -70,6 +70,11 @@ export function useNearbyRides(addresses: string[]) {
     [origin, points],
   );
 
+  const pointFor = useCallback(
+    (address: string): Coords | null => points[cacheKey(address)] ?? null,
+    [points],
+  );
+
   const setOriginFromCoords = useCallback((coords: Coords, label: string) => {
     setOrigin(coords);
     setOriginLabel(label);
@@ -117,6 +122,7 @@ export function useNearbyRides(addresses: string[]) {
     setError,
     isLoading: isFetching,
     distanceFor,
+    pointFor,
     setOriginFromCoords,
     setOriginFromAddress,
     clearOrigin,

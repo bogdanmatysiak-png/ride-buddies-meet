@@ -43,6 +43,19 @@ function Index() {
   const [filter, setFilter] = useState<RideLevel | "all">("all");
   const nearby = useNearbyRides(rides.map((r) => r.start));
   const radiusActive = Boolean(user && nearby.origin && nearby.radius);
+  const mapMarkers = rides
+    .map((r) => {
+      const point = nearby.pointFor(r.start);
+      if (!point) return null;
+      const km = nearby.distanceFor(r.start);
+      return {
+        id: r.id,
+        title: `${r.title} — ${r.start}`,
+        point,
+        inRange: km !== null && km <= (nearby.radius ?? 0),
+      };
+    })
+    .filter((m): m is NonNullable<typeof m> => m !== null);
   const visible = [...rides]
     .filter((r) => filter === "all" || r.level === filter)
     .filter((r) => {
@@ -122,6 +135,8 @@ function Index() {
             error={nearby.error}
             isLoading={nearby.isLoading}
             hasOrigin={Boolean(nearby.origin)}
+            origin={nearby.origin}
+            markers={mapMarkers}
             onRadius={nearby.setRadius}
             onCoords={nearby.setOriginFromCoords}
             onAddress={nearby.setOriginFromAddress}
