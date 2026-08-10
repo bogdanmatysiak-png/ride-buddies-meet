@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { MessageCircle, Send, Trash2 } from "lucide-react";
+import { ImagePlus, MessageCircle, Send, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -10,6 +10,7 @@ import {
   formatMessageTime,
   rideMessagesQueryKey,
   sendRideMessage,
+  uploadChatPhoto,
 } from "@/lib/chat";
 
 export function RideChat({
@@ -26,6 +27,9 @@ export function RideChat({
   const queryClient = useQueryClient();
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   const { data: messages = [], isLoading } = useQuery({
@@ -60,11 +64,14 @@ export function RideChat({
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!currentUserId || !text.trim()) return;
+    if (!currentUserId || (!text.trim() && !photo)) return;
     setSending(true);
     try {
-      await sendRideMessage(rideId, currentUserId, text);
+      let imagePath: string | null = null;
+      if (photo) imagePath = await uploadChatPhoto(currentUserId, photo);
+      await sendRideMessage(rideId, currentUserId, text, imagePath);
       setText("");
+      clearPhoto();
       await queryClient.invalidateQueries({ queryKey: rideMessagesQueryKey(rideId) });
     } catch (error) {
       toast.error(
@@ -73,6 +80,15 @@ export function RideChat({
     } finally {
       setSending(false);
     }
+  }
+
+  function clearPhoto() {
+    setPhoto(null);
+    setPhotoPreview((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+    if (fileRef.current) fileRef.current.value = "";
   }
 
   return (
@@ -131,9 +147,21 @@ export function RideChat({
                     )}
                   </span>
                 </div>
-                <p className="mt-1 whitespace-pre-wrap break-words text-sm text-foreground">
-                  {m.body}
-                </p>
+                {m.body && (
+                  <p className="mt-1 whitespace-pre-wrap break-words text-sm text-foreground">
+                    {m.body}
+                  </p>
+                )}
+                {m.imageUrl && (
+                  <a href={m.imageUrl} target="_blank" rel="noreferrer">
+                    <img
+                      src={m.imageUrl}
+                      alt="Zdjęcie od ekipy"
+                      loading="lazy"
+                      className="mt-2 max-h-64 w-auto rounded-md border border-border object-cover"
+                    />
+                  </a>
+                )}
               </div>
             );
           })
