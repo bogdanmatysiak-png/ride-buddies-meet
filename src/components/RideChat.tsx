@@ -170,7 +170,25 @@ export function RideChat({
       </div>
 
       {currentUserId ? (
-        <form onSubmit={submit} className="mt-4 flex items-end gap-2">
+        <form onSubmit={submit} className="mt-4 space-y-2">
+          {photoPreview && (
+            <div className="relative inline-block">
+              <img
+                src={photoPreview}
+                alt="Podgląd zdjęcia do wysłania"
+                className="max-h-32 rounded-md border border-border"
+              />
+              <button
+                type="button"
+                onClick={clearPhoto}
+                aria-label="Usuń wybrane zdjęcie"
+                className="absolute -right-2 -top-2 rounded-full bg-secondary p-1 text-foreground shadow"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
+          <div className="flex items-end gap-2">
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
@@ -185,14 +203,36 @@ export function RideChat({
             placeholder="Napisz do ekipy…"
             className="input-moto min-h-[44px] flex-1 resize-none"
           />
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              clearPhoto();
+              setPhoto(file);
+              setPhotoPreview(URL.createObjectURL(file));
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            aria-label="Dodaj zdjęcie"
+            className="inline-flex h-11 shrink-0 items-center justify-center rounded-md border border-border px-3 text-foreground transition-colors hover:border-primary hover:text-primary"
+          >
+            <ImagePlus className="h-4 w-4" />
+          </button>
           <button
             type="submit"
-            disabled={sending || !text.trim()}
+            disabled={sending || (!text.trim() && !photo)}
             className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-ember transition-opacity hover:opacity-90 disabled:opacity-50"
           >
             <Send className="h-4 w-4" />
-            Wyślij
+            {sending ? "Wysyłam…" : "Wyślij"}
           </button>
+          </div>
         </form>
       ) : (
         <Link
