@@ -194,7 +194,7 @@ export async function runRideAlerts(): Promise<{ sent: number; checked: number }
 
 /** Wysyła alerty także mailem (adresy z konta użytkownika). */
 async function sendAlertMails(
-  db: ReturnType<typeof createClient>,
+  db: any,
   mails: Array<{
     userId: string;
     rideId: string;
