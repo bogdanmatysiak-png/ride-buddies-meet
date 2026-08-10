@@ -331,13 +331,15 @@ export type Database = {
           body: string
           created_at: string
           id: string
+          image_url: string | null
           ride_id: string
           user_id: string
         }
         Insert: {
-          body: string
+          body?: string
           created_at?: string
           id?: string
+          image_url?: string | null
           ride_id: string
           user_id: string
         }
@@ -345,6 +347,7 @@ export type Database = {
           body?: string
           created_at?: string
           id?: string
+          image_url?: string | null
           ride_id?: string
           user_id?: string
         }
