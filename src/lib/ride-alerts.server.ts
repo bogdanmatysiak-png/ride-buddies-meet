@@ -1,6 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
+import { sendTemplateEmail } from "./email-templates/send-email";
 
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/google_maps";
+const SITE_URL = "https://www.apptrip.motorcycles";
 
 type AlertRow = {
   user_id: string;
@@ -106,6 +108,15 @@ export async function runRideAlerts(): Promise<{ sent: number; checked: number }
   );
 
   const notifications: Array<{ user_id: string; ride_id: string; title: string; body: string }> = [];
+  const mails: Array<{
+    userId: string;
+    rideId: string;
+    kind: string;
+    headline: string;
+    ride: RideRow;
+    km: number;
+    radiusKm: number;
+  }> = [];
   const deliveries: Array<{ user_id: string; ride_id: string; kind: string }> = [];
   const now = Date.now();
 
@@ -121,13 +132,23 @@ export async function runRideAlerts(): Promise<{ sent: number; checked: number }
 
       const place = alert.label ? ` od: ${alert.label}` : "";
       if (alert.notify_new && !done.has(`${alert.user_id}:${ride.id}:new`)) {
+        const headline = `Nowa wyprawa ${km} km${place}`;
         notifications.push({
           user_id: alert.user_id,
           ride_id: ride.id,
-          title: `Nowa wyprawa ${km} km${place}`,
+          title: headline,
           body: `${ride.title} — start ${ride.start_point}, ${formatWhen(ride)}. Mieści się w Twoim promieniu ${alert.radius_km} km.`,
         });
         deliveries.push({ user_id: alert.user_id, ride_id: ride.id, kind: "new" });
+        mails.push({
+          userId: alert.user_id,
+          rideId: ride.id,
+          kind: "new",
+          headline,
+          ride,
+          km,
+          radiusKm: alert.radius_km,
+        });
       }
 
       const hoursToStart = (rideStart(ride).getTime() - now) / 3600000;
@@ -137,13 +158,23 @@ export async function runRideAlerts(): Promise<{ sent: number; checked: number }
         hoursToStart <= alert.hours_before &&
         !done.has(`${alert.user_id}:${ride.id}:soon`)
       ) {
+        const headline = `Wyprawa startuje niedługo (${Math.max(1, Math.round(hoursToStart))} h)`;
         notifications.push({
           user_id: alert.user_id,
           ride_id: ride.id,
-          title: `Wyprawa startuje niedługo (${Math.max(1, Math.round(hoursToStart))} h)`,
+          title: headline,
           body: `${ride.title} — zbiórka ${ride.start_point}, ${formatWhen(ride)}. ${km} km${place}.`,
         });
         deliveries.push({ user_id: alert.user_id, ride_id: ride.id, kind: "soon" });
+        mails.push({
+          userId: alert.user_id,
+          rideId: ride.id,
+          kind: "soon",
+          headline,
+          ride,
+          km,
+          radiusKm: alert.radius_km,
+        });
       }
     }
   }
@@ -155,7 +186,48 @@ export async function runRideAlerts(): Promise<{ sent: number; checked: number }
       onConflict: "user_id,ride_id,kind",
       ignoreDuplicates: true,
     });
+    await sendAlertMails(db, mails);
   }
 
   return { sent: notifications.length, checked: rideRows.length };
+}
+
+/** Wysyła alerty także mailem (adresy z konta użytkownika). */
+async function sendAlertMails(
+  db: ReturnType<typeof createClient>,
+  mails: Array<{
+    userId: string;
+    rideId: string;
+    kind: string;
+    headline: string;
+    ride: RideRow;
+    km: number;
+    radiusKm: number;
+  }>,
+) {
+  const emails = new Map<string, string | null>();
+  for (const mail of mails) {
+    if (!emails.has(mail.userId)) {
+      const { data } = await db.auth.admin.getUserById(mail.userId);
+      emails.set(mail.userId, data?.user?.email ?? null);
+    }
+    const to = emails.get(mail.userId);
+    if (!to) continue;
+    try {
+      await sendTemplateEmail("ride-alert", to, {
+        templateData: {
+          headline: mail.headline,
+          rideTitle: mail.ride.title,
+          startPoint: mail.ride.start_point,
+          when: formatWhen(mail.ride),
+          distanceKm: mail.km,
+          radiusKm: mail.radiusKm,
+          rideUrl: `${SITE_URL}/wyprawa/${mail.ride.id}`,
+        },
+        idempotencyKey: `ride-alert-${mail.kind}-${mail.userId}-${mail.rideId}`,
+      });
+    } catch (err) {
+      console.error("ride-alert email failed", err);
+    }
+  }
 }
