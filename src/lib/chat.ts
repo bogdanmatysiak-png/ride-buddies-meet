@@ -97,6 +97,18 @@ export async function deleteRideMessage(id: string) {
   if (error) throw error;
 }
 
+/** Usuwa samo zdjęcie z wiadomości — treść zostaje. */
+export async function removeRideMessagePhoto(id: string, imagePath?: string | null) {
+  const { error } = await supabase
+    .from("ride_messages")
+    .update({ image_url: null })
+    .eq("id", id);
+  if (error) throw error;
+  if (imagePath) {
+    await supabase.storage.from(chatPhotoBucket).remove([imagePath]);
+  }
+}
+
 /** Ogłoszenie prowadzącego na czacie wyprawy — widzą je od razu wszyscy uczestnicy. */
 export const rideNoticePrefix = "📣 Aktualizacja trasy:";
 

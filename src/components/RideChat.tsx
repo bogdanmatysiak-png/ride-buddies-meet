@@ -11,6 +11,7 @@ import {
   rideMessagesQueryKey,
   sendRideMessage,
   uploadChatPhoto,
+  removeRideMessagePhoto,
 } from "@/lib/chat";
 
 export function RideChat({
@@ -153,14 +154,39 @@ export function RideChat({
                   </p>
                 )}
                 {m.imageUrl && (
-                  <a href={m.imageUrl} target="_blank" rel="noreferrer">
-                    <img
-                      src={m.imageUrl}
-                      alt="Zdjęcie od ekipy"
-                      loading="lazy"
-                      className="mt-2 max-h-64 w-auto rounded-md border border-border object-cover"
-                    />
-                  </a>
+                  <div className="relative mt-2 inline-block">
+                    <a href={m.imageUrl} target="_blank" rel="noreferrer">
+                      <img
+                        src={m.imageUrl}
+                        alt="Zdjęcie od ekipy"
+                        loading="lazy"
+                        className="max-h-64 w-auto rounded-md border border-border object-cover"
+                      />
+                    </a>
+                    {canDelete && (
+                      <button
+                        type="button"
+                        aria-label="Usuń zdjęcie"
+                        onClick={async () => {
+                          try {
+                            if (!m.body.trim()) {
+                              await deleteRideMessage(m.id);
+                            } else {
+                              await removeRideMessagePhoto(m.id, m.imagePath);
+                            }
+                            await queryClient.invalidateQueries({
+                              queryKey: rideMessagesQueryKey(rideId),
+                            });
+                          } catch {
+                            toast.error("Nie udało się usunąć zdjęcia");
+                          }
+                        }}
+                        className="absolute -right-2 -top-2 rounded-full bg-secondary p-1 text-foreground shadow transition-colors hover:text-primary"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
             );
