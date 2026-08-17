@@ -6,6 +6,7 @@ import { createRide, levelLabel, ridesQueryKey, type RideLevel } from "@/lib/rid
 import { fetchMyGroups, groupsQueryKey } from "@/lib/groups";
 import { GroupPicker } from "@/components/GroupPicker";
 import { RouteMap } from "@/components/RouteMap";
+import { RouteWeather } from "@/components/RouteWeather";
 import { cameraSourcesText } from "@/lib/camera-sources";
 import { RoutePrefsPicker } from "@/components/RoutePrefsPicker";
 import { WaypointsEditor } from "@/components/WaypointsEditor";
@@ -52,6 +53,8 @@ function NewRide() {
   const [end, setEnd] = useState("");
   const [waypoints, setWaypoints] = useState<string[]>([]);
   const [km, setKm] = useState("");
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("09:00");
   const [spots, setSpots] = useState("10");
   const [unlimitedSpots, setUnlimitedSpots] = useState(false);
   const [prefs, setPrefs] = useState<RoutePrefs>(defaultRoutePrefs);
@@ -213,9 +216,15 @@ function NewRide() {
           )}
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <Field name="date" label="Data" type="date" />
-          <Field name="time" label="Godzina" type="time" />
+          <Field name="date" label="Data" type="date" value={date} onChange={setDate} />
+          <Field name="time" label="Godzina" type="time" value={time} onChange={setTime} />
         </div>
+        <RouteWeather
+          encodedPolyline={plan?.encodedPolyline ?? null}
+          date={date}
+          time={time}
+          minutes={plan?.minutes ?? 0}
+        />
         <div className="grid grid-cols-2 gap-3">
           <Field
             name="km"
