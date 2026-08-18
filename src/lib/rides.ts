@@ -13,6 +13,7 @@ export type Ride = {
   date: string;
   time: string;
   km: number;
+  durationMinutes: number | null;
   level: RideLevel;
   spots: number;
   description: string;
@@ -74,6 +75,7 @@ export async function fetchRides(): Promise<Ride[]> {
       date: r.ride_date,
       time: r.ride_time,
       km: r.km,
+      durationMinutes: r.duration_minutes ?? null,
       level: r.level,
       spots: r.spots,
       description: r.description,
@@ -115,6 +117,7 @@ export type NewRideInput = {
   date: string;
   time: string;
   km: number;
+  durationMinutes?: number | null;
   spots: number;
   level: RideLevel;
   description: string;
@@ -143,6 +146,7 @@ export async function createRide(
       ride_date: input.date,
       ride_time: input.time,
       km: input.km,
+      duration_minutes: input.durationMinutes ?? null,
       spots: input.spots,
       level: input.level,
       description: input.description,
@@ -182,6 +186,7 @@ export async function updateRide(rideId: string, input: NewRideInput) {
       ride_date: input.date,
       ride_time: input.time,
       km: input.km,
+      duration_minutes: input.durationMinutes ?? null,
       spots: input.spots,
       level: input.level,
       description: input.description,
