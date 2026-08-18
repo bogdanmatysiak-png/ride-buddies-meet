@@ -206,6 +206,7 @@ function EditRide() {
         date,
         time,
         km: Number(km),
+        durationMinutes: plan?.minutes ?? ride?.durationMinutes ?? null,
         spots: unlimitedSpots ? 0 : Number(spots),
         description,
         level,

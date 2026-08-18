@@ -125,6 +125,7 @@ function NewRide() {
                 date: String(f.get("date")),
                 time: String(f.get("time")),
                 km: Number(f.get("km")),
+                durationMinutes: plan?.minutes ?? null,
                 spots: unlimitedSpots ? 0 : Number(f.get("spots")),
                 description: String(f.get("description")),
                 level,
