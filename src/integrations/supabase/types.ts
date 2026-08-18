@@ -434,6 +434,7 @@ export type Database = {
           cameras: number | null
           created_at: string
           description: string
+          duration_minutes: number | null
           encoded_polyline: string | null
           end_point: string
           group_id: string | null
@@ -459,6 +460,7 @@ export type Database = {
           cameras?: number | null
           created_at?: string
           description?: string
+          duration_minutes?: number | null
           encoded_polyline?: string | null
           end_point: string
           group_id?: string | null
@@ -484,6 +486,7 @@ export type Database = {
           cameras?: number | null
           created_at?: string
           description?: string
+          duration_minutes?: number | null
           encoded_polyline?: string | null
           end_point?: string
           group_id?: string | null
