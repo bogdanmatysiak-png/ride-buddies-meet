@@ -101,6 +101,13 @@ function RideDetail() {
         </p>
       </div>
 
+      <RideCountdown
+        date={ride.date}
+        time={ride.time}
+        durationMinutes={ride.durationMinutes}
+        km={ride.km}
+      />
+
       <dl className="mt-4 grid grid-cols-2 gap-3">
         <Fact icon={<CalendarDays className="h-4 w-4" />} label="Zbiórka">
           {formatDate(ride.date)}, {ride.time}
