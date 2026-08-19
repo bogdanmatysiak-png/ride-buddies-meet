@@ -26,6 +26,8 @@ Kolejność: RLS/uprawnienia → BEFORE UPDATE guard → `touch_updated_at`. Bra
 
 ## Migracja SQL (do wdrożenia po akceptacji)
 ```sql
+BEGIN;
+
 -- 1) RPC: jedyna dozwolona droga zmiany roli członka grupy
 CREATE OR REPLACE FUNCTION public.change_group_member_role(
   p_member_id uuid,
@@ -46,7 +48,8 @@ BEGIN
 
   SELECT * INTO v_member
   FROM public.group_members
-  WHERE id = p_member_id;
+  WHERE id = p_member_id
+  FOR UPDATE;
 
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Nie znalazlem takiego czlonkostwa';
@@ -59,7 +62,8 @@ BEGIN
     RAISE EXCEPTION 'Tylko wlasciciel grupy lub administrator moze zmieniac role';
   END IF;
 
-  IF p_new_role NOT IN ('member', 'moderator') THEN
+  IF p_new_role IS NULL
+     OR p_new_role NOT IN ('member', 'moderator') THEN
     RAISE EXCEPTION 'Dozwolone role to member albo moderator';
   END IF;
 
@@ -81,6 +85,8 @@ GRANT EXECUTE ON FUNCTION public.change_group_member_role(uuid, public.group_rol
 
 -- 3) Odcięcie bezpośredniego PATCH-a zmieniajacego role z przegladarki
 DROP POLICY IF EXISTS "Wlasciciel zarzadza rolami w grupie" ON public.group_members;
+
+COMMIT;
 ```
 
 ## Zmiany w plikach aplikacji
