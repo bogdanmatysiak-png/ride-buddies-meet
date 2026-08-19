@@ -1,49 +1,35 @@
-# Bezpieczny cron `ride-alerts-hourly` — v3 (bez żadnych funkcji pomocniczych)
+# Plan: Fix notify_group_invite_accepted migration
 
-## Zasada
-Zero nowych funkcji (żadnej SECURITY DEFINER, żadnej w `public`). Job wykonuje bezpośrednio `net.http_post()`, a token czyta w czasie uruchomienia z `vault.decrypted_secrets`. Endpoint bez zmian — dalej porównuje `Authorization: Bearer` z serwerowym `CRON_SECRET`.
+## Goal
+Create a new Supabase migration that records in the repository the manual fix already applied in the database for `public.notify_group_invite_accepted()`.
 
-## 1. SQL harmonogramu (proponowany, jeszcze nie wdrożony)
+## Problem
+The function previously had an `INSERT` mismatch:
+- Target columns: `(user_id, group_id, title, body)` — 4 columns.
+- `SELECT` expressions: only 3 values (`t`, title, body).
+- Result: PostgreSQL error 42601 "INSERT has more target columns than expressions".
 
-```sql
-create extension if not exists pgcrypto;
-create extension if not exists supabase_vault;
-create extension if not exists pg_net;
-create extension if not exists pg_cron;
+## Migration
+File: `supabase/migrations/20260819175300_d91302a2-4c11-460e-85fa-eca438b1db66.sql`
 
-select cron.unschedule('ride-alerts-hourly')
-where exists (select 1 from cron.job where jobname = 'ride-alerts-hourly');
+Contains only `CREATE OR REPLACE FUNCTION public.notify_group_invite_accepted()` with the corrected `INSERT` that includes `NEW.group_id` as the second expression.
 
-select cron.schedule(
-  'ride-alerts-hourly',
-  '15 * * * *',
-  $$
-  select net.http_post(
-    url := 'https://ride-buddies-meet.lovable.app/api/public/ride-alerts',
-    headers := jsonb_build_object(
-      'Content-Type', 'application/json',
-      'Authorization', 'Bearer ' || (
-        select decrypted_secret
-        from vault.decrypted_secrets
-        where name = 'cron_ride_alerts_token'
-      )
-    ),
-    body := '{}'::jsonb
-  ) as request_id;
-  $$
-);
-```
+Preserves:
+- `RETURNS trigger`
+- `LANGUAGE plpgsql`
+- `SECURITY DEFINER`
+- `SET search_path TO 'public'`
 
-W `cron.job.command` znajduje się wyłącznie zapytanie odczytujące sekret z Vault — nigdy jego wartość.
+Does **not** touch:
+- Triggers
+- RLS policies
+- `EXECUTE` grants
+- Other functions
 
-## 2. Zmiany kodu
-Żadnych. `src/routes/api/public/ride-alerts.ts`: tylko POST (GET → 405), stałoczasowe porównanie z `process.env.CRON_SECRET`, brak CORS, błąd → `{ ok: false }`.
+## Verification after deployment
+1. Accept a group invite and confirm the owner/inviter receives a notification.
+2. Check that the PostgreSQL error 42601 no longer appears.
+3. Confirm function source matches the migration.
 
-## 3. Warunki przed wdrożeniem (potwierdzane przez wykonanie, nie przez pokazanie wartości)
-1. `cron_ride_alerts_token` istnieje w Vault — sprawdzę zapytaniem zwracającym wyłącznie `name` i `length(decrypted_secret)`.
-2. Zgodność z serwerowym `CRON_SECRET`: aktualnej wartości `CRON_SECRET` nie da się odczytać, więc wykonam jednorazową rotację — jedna losowa wartość (32 bajty hex) zapisana równocześnie jako serwerowy `CRON_SECRET` oraz jako sekret Vault `cron_ride_alerts_token`. Wartość nie pojawia się w czacie, kodzie, repozytorium ani w migracji.
-3. URL produkcyjny: `https://ride-buddies-meet.lovable.app/api/public/ride-alerts` (nie preview/dev).
-4. Test: jednorazowe wykonanie tego samego `net.http_post(...)`, potem odczyt najnowszego `net._http_response` — raportuję wyłącznie `status_code` (oczekiwane 200), bez nagłówków i bez tokenu.
-
-## Uwaga
-Rotacja unieważnia dotychczasową wartość `CRON_SECRET` — po wdrożeniu poprawny jest tylko nowy token czytany z Vault przez crona.
+## Deployment
+Deploy via the Supabase migration tool after plan approval.
