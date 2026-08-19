@@ -32,8 +32,8 @@ async function setStage(
   const { data, error } = await supabaseAdmin.rpc("set_account_deletion_stage", {
     p_log_id: logId,
     p_status: status,
-    p_last_error_code: errorCode,
-    p_photos_removed: photosRemoved,
+    p_last_error_code: errorCode ?? undefined,
+    p_photos_removed: photosRemoved ?? undefined,
   });
   if (error) {
     console.error("[account-deletion] audit stage write failed", {
@@ -113,10 +113,12 @@ export async function finishAccountDeletion(input: FinishInput): Promise<FinishR
   }
 
   // Etap 3: finalny wpis audytowy
-  const { data: done, error: doneError } = await supabaseAdmin.rpc("mark_account_deletion_done", {
-    p_log_id: logId,
-    p_photos_removed: photosRemoved,
-  });
+  const { data: done, error: doneError } = logId
+    ? await supabaseAdmin.rpc("mark_account_deletion_done", {
+        p_log_id: logId,
+        p_photos_removed: photosRemoved,
+      })
+    : { data: false as boolean, error: null };
   if (doneError || done === false) {
     auditWriteFailed = true;
     // KRYTYCZNE: dane i konto Auth są usunięte, ale audyt nie został domknięty.
