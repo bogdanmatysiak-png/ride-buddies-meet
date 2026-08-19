@@ -149,7 +149,16 @@ function NewRide() {
           }
         }}
       >
-        <Field name="title" label="Nazwa wyprawy" placeholder="Serpentyny w Beskidach" />
+        <Field
+          name="title"
+          label="Nazwa wyprawy (opcjonalnie)"
+          placeholder="Serpentyny w Beskidach"
+          optional
+        />
+        <p className="-mt-2 text-xs text-muted-foreground">
+          Pusto? Nadamy nazwę automatycznie: „{profile?.nick ?? "Twój nick"} zapraszam na wyprawę
+          numer …”.
+        </p>
         <div className="grid grid-cols-2 gap-3">
           <Field
             name="start"
@@ -358,6 +367,7 @@ function Field({
   onChange,
   disabled,
   search,
+  optional,
 }: {
   name: string;
   label: string;
@@ -367,6 +377,7 @@ function Field({
   onChange?: (value: string) => void;
   disabled?: boolean;
   search?: boolean;
+  optional?: boolean;
 }) {
   return (
     <div>
@@ -392,7 +403,7 @@ function Field({
         id={name}
         name={name}
         type={type}
-        required={!disabled}
+        required={!disabled && !optional}
         disabled={disabled}
         placeholder={placeholder}
         {...(onChange ? { value: value ?? "", onChange: (e) => onChange(e.target.value) } : {})}

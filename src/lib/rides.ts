@@ -130,16 +130,31 @@ export type NewRideInput = {
   cameraSources?: string[];
 };
 
+// Auto-nazwa: kolejny, rosnący numer wyprawy (nigdy nie cofa się po usunięciach).
+async function nextAutoTitle(nick: string): Promise<string> {
+  const { data } = await supabase
+    .from("rides")
+    .select("title")
+    .ilike("title", "%zapraszam na wyprawę numer %");
+  let max = 0;
+  for (const row of data ?? []) {
+    const m = /zapraszam na wyprawę numer\s+(\d+)/i.exec(row.title ?? "");
+    if (m) max = Math.max(max, Number(m[1]));
+  }
+  return `${nick} zapraszam na wyprawę numer ${max + 1}`;
+}
+
 export async function createRide(
   input: NewRideInput,
   host: { id: string; nick: string },
 ): Promise<string> {
+  const title = input.title.trim() || (await nextAutoTitle(host.nick));
   const { data, error } = await supabase
     .from("rides")
     .insert({
       host_id: host.id,
       host_name: host.nick,
-      title: input.title,
+      title,
       start_point: input.start,
       end_point: input.end,
       waypoints: input.waypoints,
