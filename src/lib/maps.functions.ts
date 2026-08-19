@@ -298,8 +298,18 @@ export const routeFromGps = createServerFn({ method: "POST" })
     async ({
       data,
     }): Promise<{
-      fastest: { km: number; minutes: number; polyline: string };
-      shortest: { km: number; minutes: number; polyline: string };
+      fastest: {
+        km: number;
+        minutes: number;
+        polyline: string;
+        steps: Array<{ text: string; km: number; maneuver: string }>;
+      };
+      shortest: {
+        km: number;
+        minutes: number;
+        polyline: string;
+        steps: Array<{ text: string; km: number; maneuver: string }>;
+      };
       origin: { lat: number; lng: number };
     }> => {
       const lovableKey = process.env["LOVABLE_API_KEY"];
@@ -313,7 +323,7 @@ export const routeFromGps = createServerFn({ method: "POST" })
           "X-Connection-Api-Key": mapsKey,
           "Content-Type": "application/json",
           "X-Goog-FieldMask":
-            "routes.distanceMeters,routes.duration,routes.polyline.encodedPolyline",
+            "routes.distanceMeters,routes.duration,routes.polyline.encodedPolyline,routes.legs.steps.distanceMeters,routes.legs.steps.navigationInstruction",
         },
         body: JSON.stringify({
           origin: { location: { latLng: { latitude: data.lat, longitude: data.lng } } },
@@ -337,6 +347,12 @@ export const routeFromGps = createServerFn({ method: "POST" })
           distanceMeters?: number;
           duration?: string;
           polyline?: { encodedPolyline?: string };
+          legs?: Array<{
+            steps?: Array<{
+              distanceMeters?: number;
+              navigationInstruction?: { instructions?: string; maneuver?: string };
+            }>;
+          }>;
         }>;
       };
       const routes = (payload.routes ?? [])
@@ -345,6 +361,15 @@ export const routeFromGps = createServerFn({ method: "POST" })
           km: Math.round((r.distanceMeters ?? 0) / 1000),
           minutes: Math.round(Number(String(r.duration ?? "0s").replace("s", "")) / 60),
           polyline: r.polyline?.encodedPolyline ?? "",
+          steps: (r.legs ?? []).flatMap((leg) =>
+            (leg.steps ?? [])
+              .filter((s) => s.navigationInstruction?.instructions)
+              .map((s) => ({
+                text: s.navigationInstruction?.instructions ?? "",
+                km: Math.round(((s.distanceMeters ?? 0) / 1000) * 10) / 10,
+                maneuver: s.navigationInstruction?.maneuver ?? "",
+              })),
+          ),
         }));
       const fastest = [...routes].sort((a, b) => a.minutes - b.minutes)[0];
       const shortest = [...routes].sort((a, b) => a.km - b.km)[0];
