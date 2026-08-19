@@ -276,7 +276,7 @@ function GroupRow({
                     aria-label={`Rola ${m.nick}`}
                     onChange={async (e) => {
                       try {
-                        await setMemberRole(m.id, e.target.value as GroupRole);
+                        await setMemberRole(m.id, e.target.value as "member" | "moderator");
                         await reload();
                         toast.success(`Rola ${m.nick} zmieniona`);
                       } catch (error) {
