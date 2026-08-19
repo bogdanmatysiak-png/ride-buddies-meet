@@ -339,33 +339,7 @@ export const routeFromGps = createServerFn({ method: "POST" })
       const mapsKey = process.env["GOOGLE_MAPS_API_KEY"];
       if (!lovableKey || !mapsKey) throw new Error("Brak konfiguracji Google Maps");
 
-      const response = await fetch(`${GATEWAY_URL}/routes/directions/v2:computeRoutes`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${lovableKey}`,
-          "X-Connection-Api-Key": mapsKey,
-          "Content-Type": "application/json",
-          "X-Goog-FieldMask":
-            "routes.distanceMeters,routes.duration,routes.polyline.encodedPolyline,routes.legs.steps.distanceMeters,routes.legs.steps.navigationInstruction",
-        },
-        body: JSON.stringify({
-          origin: { location: { latLng: { latitude: data.lat, longitude: data.lng } } },
-          destination: { address: data.destination },
-          travelMode: "DRIVE",
-          routingPreference: "TRAFFIC_AWARE",
-          computeAlternativeRoutes: true,
-          languageCode: "pl-PL",
-          units: "METRIC",
-        }),
-      });
-
-      if (!response.ok) {
-        const body = await response.text();
-        console.error(`Routes GPS failed [${response.status}]: ${body}`);
-        throw new Error("Nie udało się policzyć odległości do miejsca zbiórki");
-      }
-
-      const payload = (await response.json()) as {
+      type GpsPayload = {
         routes?: Array<{
           distanceMeters?: number;
           duration?: string;
@@ -378,10 +352,55 @@ export const routeFromGps = createServerFn({ method: "POST" })
           }>;
         }>;
       };
-      const routes = (payload.routes ?? [])
+
+      // Najszybsza: pełna sieć dróg (autostrady, ekspresowe, krajowe, wojewódzkie).
+      // Najkrótsza: bez autostrad i ekspresówek (czyli krajowe → wojewódzkie → powiatowe),
+      //   a jeśli wariant z autostradami jest faktycznie krótszy w km — bierzemy jego.
+      const call = (avoidHighways: boolean) =>
+        fetch(`${GATEWAY_URL}/routes/directions/v2:computeRoutes`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${lovableKey}`,
+            "X-Connection-Api-Key": mapsKey,
+            "Content-Type": "application/json",
+            "X-Goog-FieldMask":
+              "routes.distanceMeters,routes.duration,routes.polyline.encodedPolyline,routes.legs.steps.distanceMeters,routes.legs.steps.navigationInstruction",
+          },
+          body: JSON.stringify({
+            origin: { location: { latLng: { latitude: data.lat, longitude: data.lng } } },
+            destination: { address: data.destination },
+            travelMode: "DRIVE",
+            routingPreference: "TRAFFIC_AWARE",
+            computeAlternativeRoutes: true,
+            routeModifiers: avoidHighways ? { avoidHighways: true } : {},
+            languageCode: "pl-PL",
+            units: "METRIC",
+          }),
+        });
+
+      const fetchRoutes = async (avoidHighways: boolean) => {
+        const response = await call(avoidHighways);
+        if (!response.ok) {
+          const body = await response.text();
+          console.error(
+            `Routes GPS failed [${response.status}] (avoidHighways=${avoidHighways}): ${body}`,
+          );
+          if (!avoidHighways) {
+            throw new Error("Nie udało się policzyć odległości do miejsca zbiórki");
+          }
+          return [] as GpsPayload["routes"];
+        }
+        return ((await response.json()) as GpsPayload).routes ?? [];
+      };
+
+      const [openRaw, localRaw] = await Promise.all([fetchRoutes(false), fetchRoutes(true)]);
+
+      const normalize = (raw: NonNullable<GpsPayload["routes"]>) =>
+        raw
         .filter((r) => !!r.distanceMeters)
         .map((r) => ({
           km: Math.round((r.distanceMeters ?? 0) / 1000),
+          meters: r.distanceMeters ?? 0,
           minutes: Math.round(Number(String(r.duration ?? "0s").replace("s", "")) / 60),
           polyline: r.polyline?.encodedPolyline ?? "",
           steps: (r.legs ?? []).flatMap((leg) =>
@@ -394,8 +413,19 @@ export const routeFromGps = createServerFn({ method: "POST" })
               })),
           ),
         }));
-      const fastest = [...routes].sort((a, b) => a.minutes - b.minutes)[0];
-      const shortest = [...routes].sort((a, b) => a.km - b.km)[0];
+
+      const open = normalize(openRaw ?? []);
+      const local = normalize(localRaw ?? []);
+
+      const fastest = [...open].sort((a, b) => a.minutes - b.minutes)[0];
+      const shortestLocal = [...local].sort((a, b) => a.meters - b.meters)[0];
+      const shortestOpen = [...open].sort((a, b) => a.meters - b.meters)[0];
+      const shortest =
+        shortestLocal && shortestOpen
+          ? shortestOpen.meters < shortestLocal.meters
+            ? shortestOpen
+            : shortestLocal
+          : (shortestLocal ?? shortestOpen);
       if (!fastest || !shortest) throw new Error("Google nie znalazło drogi do miejsca zbiórki");
       return { fastest, shortest, origin: { lat: data.lat, lng: data.lng } };
     },
