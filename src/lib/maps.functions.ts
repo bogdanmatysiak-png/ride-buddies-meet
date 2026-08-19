@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { countSpeedEnforcement } from "./speed-cameras.server";
+import { tollFromInfo, type TollInfo } from "./tolls";
 
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/google_maps";
 
@@ -29,6 +30,8 @@ export type RoutePlan = {
   sectionChecks: number | null;
   /** Źródła danych o kontrolach prędkości (osm, gitd, users). */
   cameraSources: string[];
+  /** Szacowany koszt płatnych odcinków; null gdy Google nie podaje danych. */
+  toll: { amount: number; currency: string } | null;
 };
 
 export const planRoute = createServerFn({ method: "POST" })
@@ -58,7 +61,7 @@ export const planRoute = createServerFn({ method: "POST" })
           "X-Connection-Api-Key": mapsKey,
           "Content-Type": "application/json",
           "X-Goog-FieldMask":
-            "routes.distanceMeters,routes.duration,routes.polyline.encodedPolyline,routes.legs.steps.navigationInstruction.maneuver",
+            "routes.distanceMeters,routes.duration,routes.polyline.encodedPolyline,routes.travelAdvisory.tollInfo,routes.legs.steps.navigationInstruction.maneuver",
         },
         body: JSON.stringify({
           origin: { address: data.start },
@@ -71,6 +74,7 @@ export const planRoute = createServerFn({ method: "POST" })
                 .map((address) => ({ address })),
           travelMode: "DRIVE",
           routingPreference: "TRAFFIC_UNAWARE",
+          extraComputations: ["TOLLS"],
           computeAlternativeRoutes: !opts.relaxed,
           routeModifiers: opts.relaxed
             ? {}
@@ -114,6 +118,7 @@ export const planRoute = createServerFn({ method: "POST" })
         distanceMeters?: number;
         duration?: string;
         polyline?: { encodedPolyline?: string };
+        travelAdvisory?: { tollInfo?: TollInfo };
         legs?: Array<{
           steps?: Array<{ navigationInstruction?: { maneuver?: string } }>;
         }>;
@@ -183,6 +188,7 @@ export const planRoute = createServerFn({ method: "POST" })
       cameras: enforcement?.cameras ?? null,
       sectionChecks: enforcement?.sections ?? null,
       cameraSources: enforcement?.sources ?? [],
+      toll: tollFromInfo(route.travelAdvisory?.tollInfo),
     };
   });
 
@@ -325,12 +331,14 @@ export const routeFromGps = createServerFn({ method: "POST" })
         km: number;
         minutes: number;
         polyline: string;
+        toll: { amount: number; currency: string } | null;
         steps: Array<{ text: string; km: number; maneuver: string }>;
       };
       shortest: {
         km: number;
         minutes: number;
         polyline: string;
+        toll: { amount: number; currency: string } | null;
         steps: Array<{ text: string; km: number; maneuver: string }>;
       };
       origin: { lat: number; lng: number };
@@ -344,6 +352,7 @@ export const routeFromGps = createServerFn({ method: "POST" })
           distanceMeters?: number;
           duration?: string;
           polyline?: { encodedPolyline?: string };
+          travelAdvisory?: { tollInfo?: TollInfo };
           legs?: Array<{
             steps?: Array<{
               distanceMeters?: number;
@@ -364,7 +373,7 @@ export const routeFromGps = createServerFn({ method: "POST" })
             "X-Connection-Api-Key": mapsKey,
             "Content-Type": "application/json",
             "X-Goog-FieldMask":
-              "routes.distanceMeters,routes.duration,routes.polyline.encodedPolyline,routes.legs.steps.distanceMeters,routes.legs.steps.navigationInstruction",
+              "routes.distanceMeters,routes.duration,routes.polyline.encodedPolyline,routes.travelAdvisory.tollInfo,routes.legs.steps.distanceMeters,routes.legs.steps.navigationInstruction",
           },
           body: JSON.stringify({
             origin: { location: { latLng: { latitude: data.lat, longitude: data.lng } } },
@@ -372,6 +381,7 @@ export const routeFromGps = createServerFn({ method: "POST" })
             travelMode: "DRIVE",
             routingPreference: "TRAFFIC_AWARE",
             computeAlternativeRoutes: true,
+            extraComputations: ["TOLLS"],
             routeModifiers: avoidHighways ? { avoidHighways: true } : {},
             languageCode: "pl-PL",
             units: "METRIC",
@@ -403,6 +413,7 @@ export const routeFromGps = createServerFn({ method: "POST" })
           meters: r.distanceMeters ?? 0,
           minutes: Math.round(Number(String(r.duration ?? "0s").replace("s", "")) / 60),
           polyline: r.polyline?.encodedPolyline ?? "",
+          toll: tollFromInfo(r.travelAdvisory?.tollInfo),
           steps: (r.legs ?? []).flatMap((leg) =>
             (leg.steps ?? [])
               .filter((s) => s.navigationInstruction?.instructions)
