@@ -283,3 +283,65 @@ export const optimizeWaypoints = createServerFn({ method: "POST" })
     };
     },
   );
+/** Trasa z bieżącej lokalizacji (GPS) do miejsca zbiórki: najszybsza i najkrótsza. */
+export const routeFromGps = createServerFn({ method: "POST" })
+  .inputValidator((input: { lat: number; lng: number; destination: string }) =>
+    z
+      .object({
+        lat: z.number().min(-90).max(90),
+        lng: z.number().min(-180).max(180),
+        destination: z.string().min(2).max(160),
+      })
+      .parse(input),
+  )
+  .handler(
+    async ({
+      data,
+    }): Promise<{
+      fastest: { km: number; minutes: number };
+      shortest: { km: number; minutes: number };
+    }> => {
+      const lovableKey = process.env["LOVABLE_API_KEY"];
+      const mapsKey = process.env["GOOGLE_MAPS_API_KEY"];
+      if (!lovableKey || !mapsKey) throw new Error("Brak konfiguracji Google Maps");
+
+      const response = await fetch(`${GATEWAY_URL}/routes/directions/v2:computeRoutes`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${lovableKey}`,
+          "X-Connection-Api-Key": mapsKey,
+          "Content-Type": "application/json",
+          "X-Goog-FieldMask": "routes.distanceMeters,routes.duration",
+        },
+        body: JSON.stringify({
+          origin: { location: { latLng: { latitude: data.lat, longitude: data.lng } } },
+          destination: { address: data.destination },
+          travelMode: "DRIVE",
+          routingPreference: "TRAFFIC_AWARE",
+          computeAlternativeRoutes: true,
+          languageCode: "pl-PL",
+          units: "METRIC",
+        }),
+      });
+
+      if (!response.ok) {
+        const body = await response.text();
+        console.error(`Routes GPS failed [${response.status}]: ${body}`);
+        throw new Error("Nie udało się policzyć odległości do miejsca zbiórki");
+      }
+
+      const payload = (await response.json()) as {
+        routes?: Array<{ distanceMeters?: number; duration?: string }>;
+      };
+      const routes = (payload.routes ?? [])
+        .filter((r): r is { distanceMeters: number; duration?: string } => !!r.distanceMeters)
+        .map((r) => ({
+          km: Math.round(r.distanceMeters / 1000),
+          minutes: Math.round(Number(String(r.duration ?? "0s").replace("s", "")) / 60),
+        }));
+      const fastest = [...routes].sort((a, b) => a.minutes - b.minutes)[0];
+      const shortest = [...routes].sort((a, b) => a.km - b.km)[0];
+      if (!fastest || !shortest) throw new Error("Google nie znalazło drogi do miejsca zbiórki");
+      return { fastest, shortest };
+    },
+  );
