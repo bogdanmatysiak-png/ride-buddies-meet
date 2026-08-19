@@ -201,7 +201,7 @@ function AuthNav() {
     );
   }
 
-  const links: Array<{ to: string; label: string }> = [
+  const links = [
     { to: "/nowa", label: "Ogłoś wyprawę" },
     { to: "/grupy", label: "Grupy" },
     { to: "/zaproszenia", label: "Zaproszenia" },
@@ -209,7 +209,7 @@ function AuthNav() {
     { to: "/zglos-fotoradar", label: "Zgłoś fotoradar" },
     { to: "/ranking", label: "Ranking" },
     ...(isAdmin ? [{ to: "/admin", label: "Statystyki" }] : []),
-  ];
+  ] as const;
 
   const signOut = async () => {
     await queryClient.cancelQueries();
@@ -231,7 +231,7 @@ function AuthNav() {
           onClick={() => setOpen((v) => !v)}
           className="grid h-9 w-9 place-items-center rounded-md border border-border text-foreground transition-colors hover:border-primary/60"
         >
-          {open ? <Menu className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+          <Menu className="h-4 w-4" />
         </button>
         {open && (
           <>
