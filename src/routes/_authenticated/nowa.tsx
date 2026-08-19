@@ -358,6 +358,7 @@ function Field({
   onChange,
   disabled,
   search,
+  optional,
 }: {
   name: string;
   label: string;
@@ -367,6 +368,7 @@ function Field({
   onChange?: (value: string) => void;
   disabled?: boolean;
   search?: boolean;
+  optional?: boolean;
 }) {
   return (
     <div>
@@ -392,7 +394,7 @@ function Field({
         id={name}
         name={name}
         type={type}
-        required={!disabled}
+        required={!disabled && !optional}
         disabled={disabled}
         placeholder={placeholder}
         {...(onChange ? { value: value ?? "", onChange: (e) => onChange(e.target.value) } : {})}
