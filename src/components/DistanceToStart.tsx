@@ -29,8 +29,6 @@ export function DistanceToStart({ destination }: { destination: string }) {
   const [error, setError] = useState<string | null>(null);
   const [show, setShow] = useState<Show>("both");
 
-  const detailVariant: "fastest" | "shortest" = show === "shortest" ? "shortest" : "fastest";
-  const detail = result ? result[detailVariant] : null;
   const mapsUrl = result
     ? `https://www.google.com/maps/dir/?api=1&origin=${
         result.origin ? `${result.origin.lat},${result.origin.lng}` : ""
