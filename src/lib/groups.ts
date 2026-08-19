@@ -248,6 +248,44 @@ export async function declineInvite(memberId: string) {
   await removeMembership(memberId);
 }
 
+/** Grupy, w których mogę zapraszać nowe osoby (właściciel albo moderator). */
+export async function fetchGroupsICanInviteTo(userId: string): Promise<Group[]> {
+  const groups = await fetchMyGroups(userId);
+  return groups.filter((g) => g.isOwner || g.myRole === "owner" || g.myRole === "moderator");
+}
+
+/** Zaproszenie konkretnej osoby (po id) do wielu moich grup — np. z czatu. */
+export async function inviteUserToGroups(
+  groupIds: string[],
+  inviteeId: string,
+  inviterId: string,
+  role: GroupRole = "member",
+): Promise<{ invited: number; skipped: number }> {
+  if (groupIds.length === 0) throw new Error("Wybierz co najmniej jedną grupę");
+  if (inviteeId === inviterId) throw new Error("Nie zaprosisz samego siebie");
+  let invited = 0;
+  let skipped = 0;
+  for (const groupId of groupIds) {
+    const { error } = await supabase.from("group_members").insert({
+      group_id: groupId,
+      user_id: inviteeId,
+      status: "pending",
+      invited_by: inviterId,
+      role,
+    });
+    if (!error) {
+      invited += 1;
+      continue;
+    }
+    if (error.code === "23505" || error.code === "23000" || error.message.includes("duplicate")) {
+      skipped += 1;
+      continue;
+    }
+    throw error;
+  }
+  return { invited, skipped };
+}
+
 /** Nadawca (lub właściciel grupy) anuluje wysłane zaproszenie. */
 export async function cancelInvite(memberId: string) {
   const { error } = await supabase
