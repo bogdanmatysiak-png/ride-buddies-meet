@@ -544,6 +544,13 @@ export type Database = {
     }
     Functions: {
       can_read_chat_photo: { Args: { _object_name: string }; Returns: boolean }
+      change_group_member_role: {
+        Args: {
+          p_member_id: string
+          p_new_role: Database["public"]["Enums"]["group_role"]
+        }
+        Returns: undefined
+      }
       has_group_link: {
         Args: { _group_id: string; _user_id: string }
         Returns: boolean
