@@ -8,7 +8,8 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { Menu, X } from "lucide-react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -151,10 +152,10 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <div className="min-h-screen bg-background">
         <header className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur">
-          <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3">
-            <Link to="/" className="flex items-center gap-2">
-              <span className="h-6 w-1.5 rounded-full bg-primary" />
-              <span className="font-display text-2xl tracking-wide text-foreground">
+          <div className="mx-auto grid max-w-3xl grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3">
+            <Link to="/" className="flex min-w-0 items-center gap-2">
+              <span className="h-6 w-1.5 shrink-0 rounded-full bg-primary" />
+              <span className="truncate font-display text-2xl tracking-wide text-foreground">
                 MOTOR TRIP
               </span>
             </Link>
@@ -177,6 +178,7 @@ function AuthNav() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const isAdmin = useIsAdmin(session?.user.id);
+  const [open, setOpen] = useState(false);
 
   if (loading) return <span className="h-8 w-24" />;
 
@@ -191,7 +193,7 @@ function AuthNav() {
         </Link>
         <Link
           to="/auth"
-          className="rounded-md bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+          className="shrink-0 rounded-md bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
         >
           Zaloguj się
         </Link>
@@ -199,64 +201,139 @@ function AuthNav() {
     );
   }
 
+  const links = [
+    { to: "/nowa", label: "Ogłoś wyprawę" },
+    { to: "/grupy", label: "Grupy" },
+    { to: "/zaproszenia", label: "Zaproszenia" },
+    { to: "/profil", label: "Profil" },
+    { to: "/zglos-fotoradar", label: "Zgłoś fotoradar" },
+    { to: "/ranking", label: "Ranking" },
+    ...(isAdmin ? [{ to: "/admin", label: "Statystyki" }] : []),
+  ] as const;
+
+  const signOut = async () => {
+    await queryClient.cancelQueries();
+    queryClient.clear();
+    await supabase.auth.signOut();
+    navigate({ to: "/auth", replace: true });
+  };
+
   return (
-    <nav className="flex items-center gap-2">
+    <div className="flex shrink-0 items-center gap-2">
       <NotificationBell userId={session.user.id} />
-      <Link
-        to="/ranking"
-        className="text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-primary"
-      >
-        Ranking
-      </Link>
-      {isAdmin && (
+
+      {/* Compact menu on small screens */}
+      <div className="relative lg:hidden">
+        <button
+          type="button"
+          aria-label="Menu"
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+          className="grid h-9 w-9 place-items-center rounded-md border border-border text-foreground transition-colors hover:border-primary/60"
+        >
+          <Menu className="h-4 w-4" />
+        </button>
+        {open && (
+          <>
+            <button
+              type="button"
+              aria-label="Zamknij menu"
+              onClick={() => setOpen(false)}
+              className="fixed inset-0 z-40 cursor-default"
+            />
+            <div className="absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-lg border border-border bg-card shadow-ember">
+              <div className="flex items-center justify-between border-b border-border px-3 py-2">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Menu
+                </span>
+                <button
+                  type="button"
+                  aria-label="Zamknij"
+                  onClick={() => setOpen(false)}
+                  className="text-muted-foreground hover:text-primary"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <nav className="flex flex-col py-1">
+                {links.map((l) => (
+                  <Link
+                    key={l.to}
+                    to={l.to}
+                    onClick={() => setOpen(false)}
+                    className="px-3 py-2 text-sm font-semibold text-foreground hover:bg-accent hover:text-primary"
+                  >
+                    {l.label}
+                  </Link>
+                ))}
+                <button
+                  onClick={() => {
+                    setOpen(false);
+                    void signOut();
+                  }}
+                  className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:bg-accent hover:text-primary"
+                >
+                  Wyloguj
+                </button>
+              </nav>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Full nav on large screens */}
+      <nav className="hidden items-center gap-2 lg:flex">
         <Link
-          to="/admin"
+          to="/ranking"
           className="text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-primary"
         >
-          Statystyki
+          Ranking
         </Link>
-      )}
-      <Link
-        to="/nowa"
-        className="rounded-md bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
-      >
-        Ogłoś wyprawę
-      </Link>
-      <Link
-        to="/grupy"
-        className="rounded-md border border-border px-3 py-1.5 text-sm font-semibold text-foreground transition-colors hover:border-primary/60"
-      >
-        Grupy
-      </Link>
-      <Link
-        to="/zaproszenia"
-        className="rounded-md border border-border px-3 py-1.5 text-sm font-semibold text-foreground transition-colors hover:border-primary/60"
-      >
-        Zaproszenia
-      </Link>
-      <Link
-        to="/profil"
-        className="rounded-md border border-border px-3 py-1.5 text-sm font-semibold text-foreground transition-colors hover:border-primary/60"
-      >
-        Profil
-      </Link>
-      <Link
-        to="/zglos-fotoradar"
-        className="rounded-md border border-border px-3 py-1.5 text-sm font-semibold text-foreground transition-colors hover:border-primary/60"
-      >
-        Zgłoś fotoradar
-      </Link>
-      <button
-        onClick={async () => {
-          await queryClient.cancelQueries();
-          queryClient.clear();
-          await supabase.auth.signOut();
-          navigate({ to: "/auth", replace: true });
-        }}
-        className="text-xs uppercase tracking-wider text-muted-foreground hover:text-primary"
-      >
-        Wyloguj
-      </button>
-    </nav>
+        {isAdmin && (
+          <Link
+            to="/admin"
+            className="text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-primary"
+          >
+            Statystyki
+          </Link>
+        )}
+        <Link
+          to="/nowa"
+          className="rounded-md bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+        >
+          Ogłoś wyprawę
+        </Link>
+        <Link
+          to="/grupy"
+          className="rounded-md border border-border px-3 py-1.5 text-sm font-semibold text-foreground transition-colors hover:border-primary/60"
+        >
+          Grupy
+        </Link>
+        <Link
+          to="/zaproszenia"
+          className="rounded-md border border-border px-3 py-1.5 text-sm font-semibold text-foreground transition-colors hover:border-primary/60"
+        >
+          Zaproszenia
+        </Link>
+        <Link
+          to="/profil"
+          className="rounded-md border border-border px-3 py-1.5 text-sm font-semibold text-foreground transition-colors hover:border-primary/60"
+        >
+          Profil
+        </Link>
+        <Link
+          to="/zglos-fotoradar"
+          className="rounded-md border border-border px-3 py-1.5 text-sm font-semibold text-foreground transition-colors hover:border-primary/60"
+        >
+          Zgłoś fotoradar
+        </Link>
+        <button
+          onClick={() => void signOut()}
+          className="text-xs uppercase tracking-wider text-muted-foreground hover:text-primary"
+        >
+          Wyloguj
+        </button>
+      </nav>
+    </div>
   );
 }
