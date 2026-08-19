@@ -8,6 +8,7 @@ import { GroupPicker } from "@/components/GroupPicker";
 import { RouteMap } from "@/components/RouteMap";
 import { RouteWeather } from "@/components/RouteWeather";
 import { cameraSourcesText } from "@/lib/camera-sources";
+import { tollText } from "@/lib/tolls";
 import { RoutePrefsPicker } from "@/components/RoutePrefsPicker";
 import { WaypointsEditor } from "@/components/WaypointsEditor";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
@@ -225,6 +226,7 @@ function NewRide() {
                   ? "Fotoradary: brak danych dla tej trasy"
                   : `Fotoradary: ${plan.cameras ?? 0} · odcinkowe pomiary prędkości: ${plan.sectionChecks ?? 0} (źródła: ${cameraSourcesText(plan.cameraSources)})`}
               </p>
+              <p className="mt-1 text-xs text-muted-foreground">{tollText(plan.toll)}</p>
               <RouteMap
                 start={plan.startAddress}
                 end={plan.endAddress}

@@ -12,6 +12,7 @@ import {
 } from "@/lib/rides";
 import { RouteMap } from "@/components/RouteMap";
 import { cameraSourcesText } from "@/lib/camera-sources";
+import { tollText } from "@/lib/tolls";
 import { RoutePrefsPicker } from "@/components/RoutePrefsPicker";
 import { WaypointsEditor } from "@/components/WaypointsEditor";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
@@ -330,6 +331,7 @@ function EditRide() {
                 ? "Fotoradary: brak danych dla tej trasy"
                 : `Fotoradary: ${plan.cameras ?? 0} · odcinkowe pomiary prędkości: ${plan.sectionChecks ?? 0} (źródła: ${cameraSourcesText(plan.cameraSources)})`}
             </p>
+            <p className="mt-1 text-xs text-muted-foreground">{tollText(plan.toll)}</p>
             </>
           )}
           {start.length > 1 && end.length > 1 && (
