@@ -7,6 +7,7 @@ const state = {
   deletions: new Map<string, { status: string; last_error_code: string | null; auth_deleted: boolean; photos_removed: number }>(),
   storageRemove: vi.fn(),
   deleteUser: vi.fn(),
+  rpcCalls: [] as { name: string; args: Record<string, unknown> }[],
 };
 
 function pendingFor(logId: string) {
@@ -39,6 +40,7 @@ const supabaseAdmin = {
   },
   auth: { admin: { deleteUser: (id: string) => state.deleteUser(id) } },
   async rpc(name: string, args: Record<string, unknown>) {
+    state.rpcCalls.push({ name, args });
     if (name === "mark_account_deletion_objects_removed") {
       const logId = args["p_log_id"] as string;
       const bucket = args["p_bucket_id"] as string;
@@ -56,6 +58,12 @@ const supabaseAdmin = {
       return { data: pendingFor(args["p_log_id"] as string).length, error: null };
     }
     if (name === "set_account_deletion_stage") {
+      if (args["p_status"] === "auth_deleted") {
+        throw new Error("Status auth_deleted moze ustawic wylacznie mark_account_deletion_done");
+      }
+      if (typeof args["p_photos_removed"] === "number" && (args["p_photos_removed"] as number) < 0) {
+        throw new Error("photos_removed nie moze byc ujemne");
+      }
       const row = state.deletions.get(args["p_log_id"] as string);
       if (!row) return { data: false, error: null };
       row.status = args["p_status"] as string;
@@ -85,6 +93,7 @@ const USER = "33333333-3333-3333-3333-333333333333";
 
 beforeEach(() => {
   vi.clearAllMocks();
+  state.rpcCalls = [];
   state.objects = [
     { log_id: LOG, bucket_id: "chat-photos", object_name: "a.jpg", removed: false },
     { log_id: LOG, bucket_id: "chat-photos", object_name: "b.jpg", removed: false },
