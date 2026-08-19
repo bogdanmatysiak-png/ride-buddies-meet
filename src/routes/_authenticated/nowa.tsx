@@ -11,6 +11,7 @@ import { cameraSourcesText } from "@/lib/camera-sources";
 import { RoutePrefsPicker } from "@/components/RoutePrefsPicker";
 import { WaypointsEditor } from "@/components/WaypointsEditor";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
+import { RoutePlaceHints } from "@/components/RoutePlaceHints";
 import { useLiveRoute } from "@/hooks/useLiveRoute";
 import { useOptimizeWaypoints } from "@/hooks/useOptimizeWaypoints";
 import {
@@ -203,6 +204,15 @@ function NewRide() {
             {planning ? "Liczę trasę na żywo…" : "Przelicz trasę teraz"}
           </button>
           {planError && <p className="mt-2 text-xs text-destructive">{planError}</p>}
+          <RoutePlaceHints
+            start={start}
+            end={end}
+            waypoints={waypoints}
+            error={planError}
+            onStartChange={setStart}
+            onEndChange={setEnd}
+            onWaypointsChange={setWaypoints}
+          />
           {plan && (
             <>
               <p className="mt-3 text-sm text-muted-foreground">
