@@ -25,6 +25,7 @@ import { Route as MotocyklistaIdRouteImport } from './routes/motocyklista.$id'
 import { Route as WyprawaIdRouteImport } from './routes/wyprawa.$id'
 import { Route as AuthenticatedEdytujIdRouteImport } from './routes/_authenticated/edytuj.$id'
 import { Route as AuthenticatedGrupaIdRouteImport } from './routes/_authenticated/grupa.$id'
+import { Route as ApiPublicAccountDeletionFinishRouteImport } from './routes/api/public/account-deletion-finish'
 import { Route as ApiPublicRideAlertsRouteImport } from './routes/api/public/ride-alerts'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 
@@ -110,6 +111,12 @@ const AuthenticatedGrupaIdRoute = AuthenticatedGrupaIdRouteImport.update({
   path: '/grupa/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiPublicAccountDeletionFinishRoute =
+  ApiPublicAccountDeletionFinishRouteImport.update({
+    id: '/api/public/account-deletion-finish',
+    path: '/api/public/account-deletion-finish',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicRideAlertsRoute = ApiPublicRideAlertsRouteImport.update({
   id: '/api/public/ride-alerts',
   path: '/api/public/ride-alerts',
@@ -138,6 +145,7 @@ export interface FileRoutesByFullPath {
   '/wyprawa/$id': typeof WyprawaIdRoute
   '/edytuj/$id': typeof AuthenticatedEdytujIdRoute
   '/grupa/$id': typeof AuthenticatedGrupaIdRoute
+  '/api/public/account-deletion-finish': typeof ApiPublicAccountDeletionFinishRoute
   '/api/public/ride-alerts': typeof ApiPublicRideAlertsRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
 }
@@ -157,6 +165,7 @@ export interface FileRoutesByTo {
   '/wyprawa/$id': typeof WyprawaIdRoute
   '/edytuj/$id': typeof AuthenticatedEdytujIdRoute
   '/grupa/$id': typeof AuthenticatedGrupaIdRoute
+  '/api/public/account-deletion-finish': typeof ApiPublicAccountDeletionFinishRoute
   '/api/public/ride-alerts': typeof ApiPublicRideAlertsRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
 }
@@ -178,6 +187,7 @@ export interface FileRoutesById {
   '/wyprawa/$id': typeof WyprawaIdRoute
   '/_authenticated/edytuj/$id': typeof AuthenticatedEdytujIdRoute
   '/_authenticated/grupa/$id': typeof AuthenticatedGrupaIdRoute
+  '/api/public/account-deletion-finish': typeof ApiPublicAccountDeletionFinishRoute
   '/api/public/ride-alerts': typeof ApiPublicRideAlertsRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
 }
@@ -199,6 +209,7 @@ export interface FileRouteTypes {
     | '/wyprawa/$id'
     | '/edytuj/$id'
     | '/grupa/$id'
+    | '/api/public/account-deletion-finish'
     | '/api/public/ride-alerts'
     | '/lovable/email/transactional/preview'
   fileRoutesByTo: FileRoutesByTo
@@ -218,6 +229,7 @@ export interface FileRouteTypes {
     | '/wyprawa/$id'
     | '/edytuj/$id'
     | '/grupa/$id'
+    | '/api/public/account-deletion-finish'
     | '/api/public/ride-alerts'
     | '/lovable/email/transactional/preview'
   id:
@@ -238,6 +250,7 @@ export interface FileRouteTypes {
     | '/wyprawa/$id'
     | '/_authenticated/edytuj/$id'
     | '/_authenticated/grupa/$id'
+    | '/api/public/account-deletion-finish'
     | '/api/public/ride-alerts'
     | '/lovable/email/transactional/preview'
   fileRoutesById: FileRoutesById
@@ -250,6 +263,7 @@ export interface RootRouteChildren {
   UsunKontoRoute: typeof UsunKontoRoute
   MotocyklistaIdRoute: typeof MotocyklistaIdRoute
   WyprawaIdRoute: typeof WyprawaIdRoute
+  ApiPublicAccountDeletionFinishRoute: typeof ApiPublicAccountDeletionFinishRoute
   ApiPublicRideAlertsRoute: typeof ApiPublicRideAlertsRoute
   LovableEmailTransactionalPreviewRoute: typeof LovableEmailTransactionalPreviewRoute
 }
@@ -368,6 +382,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedGrupaIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/public/account-deletion-finish': {
+      id: '/api/public/account-deletion-finish'
+      path: '/api/public/account-deletion-finish'
+      fullPath: '/api/public/account-deletion-finish'
+      preLoaderRoute: typeof ApiPublicAccountDeletionFinishRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/ride-alerts': {
       id: '/api/public/ride-alerts'
       path: '/api/public/ride-alerts'
@@ -420,6 +441,7 @@ const rootRouteChildren: RootRouteChildren = {
   UsunKontoRoute: UsunKontoRoute,
   MotocyklistaIdRoute: MotocyklistaIdRoute,
   WyprawaIdRoute: WyprawaIdRoute,
+  ApiPublicAccountDeletionFinishRoute: ApiPublicAccountDeletionFinishRoute,
   ApiPublicRideAlertsRoute: ApiPublicRideAlertsRoute,
   LovableEmailTransactionalPreviewRoute: LovableEmailTransactionalPreviewRoute,
 }

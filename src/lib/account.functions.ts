@@ -96,32 +96,16 @@ export const deleteMyAccount = createServerFn({ method: "POST" })
       photos?: string[];
     };
 
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { finishAccountDeletion } = await import("@/lib/account-deletion.server");
 
-    let removed = 0;
     const photos = (payload.photos ?? []).filter((p): p is string => typeof p === "string" && !!p);
-    if (photos.length > 0) {
-      const { data: removedFiles, error: storageError } = await supabaseAdmin.storage
-        .from("chat-photos")
-        .remove(photos);
-      if (storageError) {
-        console.error("chat-photos cleanup failed", { userId, message: storageError.message });
-      }
-      removed = removedFiles?.length ?? 0;
-    }
 
-    const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId);
-    if (authError) {
-      console.error("auth user delete failed", { userId, message: authError.message });
-      throw new Error("Nie udało się dokończyć usuwania konta");
-    }
-
-    if (payload.log_id) {
-      await supabaseAdmin.rpc("mark_account_deletion_done", {
-        p_log_id: payload.log_id,
-        p_photos_removed: removed,
-      });
-    }
+    await finishAccountDeletion({
+      logId: payload.log_id ?? null,
+      userId,
+      photos,
+      startAt: "database_deleted",
+    });
 
     return { ok: true };
   });

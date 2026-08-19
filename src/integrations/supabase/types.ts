@@ -14,6 +14,41 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_deletion_objects: {
+        Row: {
+          bucket_id: string
+          created_at: string
+          id: string
+          log_id: string
+          object_name: string
+          removed: boolean
+        }
+        Insert: {
+          bucket_id: string
+          created_at?: string
+          id?: string
+          log_id: string
+          object_name: string
+          removed?: boolean
+        }
+        Update: {
+          bucket_id?: string
+          created_at?: string
+          id?: string
+          log_id?: string
+          object_name?: string
+          removed?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_deletion_objects_log_id_fkey"
+            columns: ["log_id"]
+            isOneToOne: false
+            referencedRelation: "account_deletions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       account_deletions: {
         Row: {
           auth_deleted: boolean
@@ -21,8 +56,11 @@ export type Database = {
           groups_deleted: number
           groups_transferred: number
           id: string
+          last_error_code: string | null
           photos_removed: number
           rides_deleted: number
+          status: string
+          updated_at: string
           user_id: string
         }
         Insert: {
@@ -31,8 +69,11 @@ export type Database = {
           groups_deleted?: number
           groups_transferred?: number
           id?: string
+          last_error_code?: string | null
           photos_removed?: number
           rides_deleted?: number
+          status?: string
+          updated_at?: string
           user_id: string
         }
         Update: {
@@ -41,8 +82,11 @@ export type Database = {
           groups_deleted?: number
           groups_transferred?: number
           id?: string
+          last_error_code?: string | null
           photos_removed?: number
           rides_deleted?: number
+          status?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -607,9 +651,29 @@ export type Database = {
         Args: { _group_id: string; _user_id: string }
         Returns: boolean
       }
+      list_incomplete_account_deletions: {
+        Args: { p_limit?: number }
+        Returns: {
+          created_at: string
+          last_error_code: string
+          log_id: string
+          pending_objects: Json
+          status: string
+          user_id: string
+        }[]
+      }
       mark_account_deletion_done: {
         Args: { p_log_id: string; p_photos_removed: number }
-        Returns: undefined
+        Returns: boolean
+      }
+      set_account_deletion_stage: {
+        Args: {
+          p_last_error_code?: string
+          p_log_id: string
+          p_photos_removed?: number
+          p_status: string
+        }
+        Returns: boolean
       }
       wants_notification: {
         Args: { _kind: string; _user_id: string }
