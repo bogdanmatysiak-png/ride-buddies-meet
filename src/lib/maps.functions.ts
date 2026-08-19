@@ -163,7 +163,9 @@ export const planRoute = createServerFn({ method: "POST" })
       : candidates[0];
     if (!route?.distanceMeters) {
       throw new Error(
-        "Google nie znalazło trasy między tymi punktami – sprawdź pisownię miejsc (dodaj miasto/kraj) i usuń punkty bez dostępu drogowego.",
+        data.waypoints.length > 0
+          ? `Google nie znalazło trasy dla „${data.start}” → „${data.end}” nawet bez punktów „przez”. Sprawdź pisownię miejsc i dodaj miasto/kraj (np. „Kraków, Polska”).`
+          : `Google nie znalazło trasy dla „${data.start}” → „${data.end}”. Sprawdź pisownię i dodaj miasto/kraj (np. „Kraków, Polska”).`,
       );
     }
 
