@@ -151,7 +151,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <div className="min-h-screen bg-background">
-        <header className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur">
+        <header className="sticky top-0 z-50 w-full border-b border-border/60 bg-background/85 shadow-sm backdrop-blur">
           <div className="mx-auto grid max-w-3xl grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3">
             <Link to="/" className="flex min-w-0 items-center gap-2">
               <span className="h-6 w-1.5 shrink-0 rounded-full bg-primary" />
