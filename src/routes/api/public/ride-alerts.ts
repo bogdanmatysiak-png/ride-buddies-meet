@@ -1,18 +1,24 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-/** Bezpieczne porównanie stringów (stały czas, bez zależności od Node crypto). */
+/** Bezpieczne porównanie stringów (stały czas). */
 function safeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
   let diff = 0;
-  for (let i = 0; i < a.length; i += 1) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  for (let i = 0; i < a.length; i += 1) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
   return diff === 0;
 }
 
 /** Tylko dla harmonogramu (pg_cron): wysyła alerty o wyprawach w promieniu użytkownika. */
 async function handlePost({ request }: { request: Request }) {
-  const secret = process.env["CRON_SECRET"];
   const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? "";
-  if (!secret || !token || !safeEqual(token, secret)) {
+
+  const secrets = [process.env["CRON_SECRET"], process.env["CRON_SECRET_V2"]].filter(
+    (s): s is string => Boolean(s)
+  );
+
+  if (secrets.length === 0 || !token || !secrets.some((secret) => safeEqual(token, secret))) {
     return new Response("Unauthorized", { status: 401 });
   }
 
@@ -29,7 +35,11 @@ async function handlePost({ request }: { request: Request }) {
 export const Route = createFileRoute("/api/public/ride-alerts")({
   server: {
     handlers: {
-      GET: async () => new Response("Method Not Allowed", { status: 405, headers: { Allow: "POST" } }),
+      GET: async () =>
+        new Response("Method Not Allowed", {
+          status: 405,
+          headers: { Allow: "POST" },
+        }),
       POST: handlePost,
     },
   },
