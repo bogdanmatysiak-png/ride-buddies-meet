@@ -36,6 +36,7 @@ export type RoutePlan = {
 };
 
 export const planRoute = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(
     (input: {
       start: string;
@@ -316,6 +317,7 @@ export const optimizeWaypoints = createServerFn({ method: "POST" })
   );
 /** Trasa z bieżącej lokalizacji (GPS) do miejsca zbiórki: najszybsza i najkrótsza. */
 export const routeFromGps = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input: { lat: number; lng: number; destination: string }) =>
     z
       .object({
