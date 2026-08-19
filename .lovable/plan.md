@@ -7,7 +7,7 @@ Prevent group members from granting themselves elevated roles while still allowi
 The current permissive UPDATE policy `"Zaproszony akceptuje wlasne zaproszenie"` and the current `public.guard_group_member_role()` function only block unauthorized role changes loosely. A logged-in group member can potentially update their own `group_members` row and change `role`, `group_id`, `user_id`, `invited_by`, or `created_at` in the same statement that flips `status` to `accepted`.
 
 ## Migration
-File: `supabase/migrations/20260819182300_219bb6f0-3925-49df-a128-edccd092adf3.sql`
+The migration file will be created under `supabase/migrations/` via the database migration tool after your approval. The SQL below is the exact content that will be applied and persisted.
 
 ### 1) Replace the policy
 DROP and re-create the exact-named policy so a user can only attempt to update their own pending invitation row, and the resulting row must have `status = 'accepted'`.
@@ -84,9 +84,9 @@ $$;
 ```
 
 ## Verification before deployment
-1. Confirm the migration file contains only the exact policy and function above.
+1. Confirm the migration contains only the exact policy and function above.
 2. Confirm no other RLS policy or trigger is altered.
-3. After your approval, the migration can be applied via the Supabase migration tool.
+3. After your approval, the migration will be applied via the Supabase migration tool.
 
 ## Deployment
 Apply via the Supabase migration tool after approval.
