@@ -134,12 +134,13 @@ export async function createRide(
   input: NewRideInput,
   host: { id: string; nick: string },
 ): Promise<string> {
+  const title = input.title.trim() || (await nextAutoTitle(host.nick));
   const { data, error } = await supabase
     .from("rides")
     .insert({
       host_id: host.id,
       host_name: host.nick,
-      title: input.title,
+      title,
       start_point: input.start,
       end_point: input.end,
       waypoints: input.waypoints,
