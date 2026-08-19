@@ -130,13 +130,18 @@ export type NewRideInput = {
   cameraSources?: string[];
 };
 
-// Auto-nazwa: kolejny numer wyprawy danego prowadzącego.
+// Auto-nazwa: kolejny, rosnący numer wyprawy (nigdy nie cofa się po usunięciach).
 async function nextAutoTitle(nick: string): Promise<string> {
-  const { count } = await supabase
+  const { data } = await supabase
     .from("rides")
-    .select("id", { count: "exact", head: true });
-  const n = (count ?? 0) + 1;
-  return `${nick} zapraszam na wyprawę numer ${n}`;
+    .select("title")
+    .ilike("title", "%zapraszam na wyprawę numer %");
+  let max = 0;
+  for (const row of data ?? []) {
+    const m = /zapraszam na wyprawę numer\s+(\d+)/i.exec(row.title ?? "");
+    if (m) max = Math.max(max, Number(m[1]));
+  }
+  return `${nick} zapraszam na wyprawę numer ${max + 1}`;
 }
 
 export async function createRide(
