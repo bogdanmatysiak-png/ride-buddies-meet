@@ -1,9 +1,9 @@
-# Bezpieczny cron `ride-alerts-hourly` (sekret nigdy nie jawny) — v2
+# Bezpieczny cron `ride-alerts-hourly` — v3 (bez żadnych funkcji pomocniczych)
 
 ## Zasada
-Endpoint zostaje bez zmian: dalej weryfikuje `Authorization: Bearer` względem `CRON_SECRET` po stronie serwera. Cron nie trzyma sekretu w `cron.job` — pobiera go w czasie wykonania z Supabase Vault. Rotacja ustawia tę samą losową wartość w obu miejscach, bez pokazywania jej gdziekolwiek.
+Zero nowych funkcji (żadnej SECURITY DEFINER, żadnej w `public`). Job wykonuje bezpośrednio `net.http_post()`, a token czyta w czasie uruchomienia z `vault.decrypted_secrets`. Endpoint bez zmian — dalej porównuje `Authorization: Bearer` z serwerowym `CRON_SECRET`.
 
-## 1. Migracja SQL (proponowana, jeszcze nie wdrożona)
+## 1. SQL harmonogramu (proponowany, jeszcze nie wdrożony)
 
 ```sql
 create extension if not exists pgcrypto;
@@ -11,56 +11,39 @@ create extension if not exists supabase_vault;
 create extension if not exists pg_net;
 create extension if not exists pg_cron;
 
--- Wywołanie endpointu: token czytany dopiero w momencie uruchomienia
-create or replace function public.invoke_ride_alerts()
-returns bigint
-language plpgsql
-security definer
-set search_path = pg_catalog, vault
-as $$
-declare tok text; req bigint;
-begin
-  select decrypted_secret into tok
-  from vault.decrypted_secrets
-  where name = 'cron_ride_alerts_token';
-
-  if tok is null then
-    raise exception 'missing cron secret';
-  end if;
-
-  select net.http_post(
-    url := 'https://project--b4e20236-8294-4664-a20f-3034c8b138f6.lovable.app/api/public/ride-alerts',
-    headers := jsonb_build_object(
-      'Content-Type', 'application/json',
-      'Authorization', 'Bearer ' || tok
-    ),
-    body := '{}'::jsonb
-  ) into req;
-
-  return req;
-end $$;
-
-revoke all on function public.invoke_ride_alerts() from public;
-revoke all on function public.invoke_ride_alerts() from anon;
-revoke all on function public.invoke_ride_alerts() from authenticated;
-
--- Harmonogram: w cron.job trafia tylko nazwa funkcji
 select cron.unschedule('ride-alerts-hourly')
 where exists (select 1 from cron.job where jobname = 'ride-alerts-hourly');
 
-select cron.schedule('ride-alerts-hourly', '15 * * * *', $$select public.invoke_ride_alerts();$$);
+select cron.schedule(
+  'ride-alerts-hourly',
+  '15 * * * *',
+  $$
+  select net.http_post(
+    url := 'https://ride-buddies-meet.lovable.app/api/public/ride-alerts',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' || (
+        select decrypted_secret
+        from vault.decrypted_secrets
+        where name = 'cron_ride_alerts_token'
+      )
+    ),
+    body := '{}'::jsonb
+  ) as request_id;
+  $$
+);
 ```
 
-Brak `verify_cron_token`, brak nowej funkcji SECURITY DEFINER do porównywania sekretu, brak `grant execute` dla roli publicznej.
+W `cron.job.command` znajduje się wyłącznie zapytanie odczytujące sekret z Vault — nigdy jego wartość.
 
 ## 2. Zmiany kodu
-Żadnych. `src/routes/api/public/ride-alerts.ts` pozostaje jak jest: tylko POST (GET → 405), stałoczasowe porównanie z `process.env.CRON_SECRET`, brak CORS, błędy jako `{ ok: false }` bez szczegółów.
+Żadnych. `src/routes/api/public/ride-alerts.ts`: tylko POST (GET → 405), stałoczasowe porównanie z `process.env.CRON_SECRET`, brak CORS, błąd → `{ ok: false }`.
 
-## 3. Rotacja sekretu (nigdzie nie jawna)
-Wykonywana narzędziami, nie migracją:
-1. Losowa wartość (32 bajty hex) generowana w izolowanym kroku — nie trafia do czatu ani do żadnego pliku w repo.
-2. Zapis jako `CRON_SECRET` w sekretach serwera aplikacji.
-3. Zapis tej samej wartości w Vault jako `cron_ride_alerts_token` (`vault.create_secret` / `vault.update_secret`) przez jednorazowe polecenie SQL wykonane narzędziem, nie zapisywane jako migracja.
+## 3. Warunki przed wdrożeniem (potwierdzane przez wykonanie, nie przez pokazanie wartości)
+1. `cron_ride_alerts_token` istnieje w Vault — sprawdzę zapytaniem zwracającym wyłącznie `name` i `length(decrypted_secret)`.
+2. Zgodność z serwerowym `CRON_SECRET`: aktualnej wartości `CRON_SECRET` nie da się odczytać, więc wykonam jednorazową rotację — jedna losowa wartość (32 bajty hex) zapisana równocześnie jako serwerowy `CRON_SECRET` oraz jako sekret Vault `cron_ride_alerts_token`. Wartość nie pojawia się w czacie, kodzie, repozytorium ani w migracji.
+3. URL produkcyjny: `https://ride-buddies-meet.lovable.app/api/public/ride-alerts` (nie preview/dev).
+4. Test: jednorazowe wykonanie tego samego `net.http_post(...)`, potem odczyt najnowszego `net._http_response` — raportuję wyłącznie `status_code` (oczekiwane 200), bez nagłówków i bez tokenu.
 
-## 4. Test po wdrożeniu
-`select public.invoke_ride_alerts();`, następnie odczyt najnowszego wpisu z `net._http_response` — raportuję wyłącznie `status_code` (bez nagłówków, bez treści sekretu).
+## Uwaga
+Rotacja unieważnia dotychczasową wartość `CRON_SECRET` — po wdrożeniu poprawny jest tylko nowy token czytany z Vault przez crona.
