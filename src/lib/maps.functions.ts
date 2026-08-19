@@ -298,8 +298,9 @@ export const routeFromGps = createServerFn({ method: "POST" })
     async ({
       data,
     }): Promise<{
-      fastest: { km: number; minutes: number };
-      shortest: { km: number; minutes: number };
+      fastest: { km: number; minutes: number; polyline: string };
+      shortest: { km: number; minutes: number; polyline: string };
+      origin: { lat: number; lng: number };
     }> => {
       const lovableKey = process.env["LOVABLE_API_KEY"];
       const mapsKey = process.env["GOOGLE_MAPS_API_KEY"];
@@ -311,7 +312,8 @@ export const routeFromGps = createServerFn({ method: "POST" })
           Authorization: `Bearer ${lovableKey}`,
           "X-Connection-Api-Key": mapsKey,
           "Content-Type": "application/json",
-          "X-Goog-FieldMask": "routes.distanceMeters,routes.duration",
+          "X-Goog-FieldMask":
+            "routes.distanceMeters,routes.duration,routes.polyline.encodedPolyline",
         },
         body: JSON.stringify({
           origin: { location: { latLng: { latitude: data.lat, longitude: data.lng } } },
@@ -331,17 +333,22 @@ export const routeFromGps = createServerFn({ method: "POST" })
       }
 
       const payload = (await response.json()) as {
-        routes?: Array<{ distanceMeters?: number; duration?: string }>;
+        routes?: Array<{
+          distanceMeters?: number;
+          duration?: string;
+          polyline?: { encodedPolyline?: string };
+        }>;
       };
       const routes = (payload.routes ?? [])
-        .filter((r): r is { distanceMeters: number; duration?: string } => !!r.distanceMeters)
+        .filter((r) => !!r.distanceMeters)
         .map((r) => ({
-          km: Math.round(r.distanceMeters / 1000),
+          km: Math.round((r.distanceMeters ?? 0) / 1000),
           minutes: Math.round(Number(String(r.duration ?? "0s").replace("s", "")) / 60),
+          polyline: r.polyline?.encodedPolyline ?? "",
         }));
       const fastest = [...routes].sort((a, b) => a.minutes - b.minutes)[0];
       const shortest = [...routes].sort((a, b) => a.km - b.km)[0];
       if (!fastest || !shortest) throw new Error("Google nie znalazło drogi do miejsca zbiórki");
-      return { fastest, shortest };
+      return { fastest, shortest, origin: { lat: data.lat, lng: data.lng } };
     },
   );

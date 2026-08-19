@@ -2,11 +2,17 @@ import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Crosshair, Loader2, Navigation } from "lucide-react";
 import { routeFromGps } from "@/lib/maps.functions";
+import { GpsRouteMap } from "@/components/GpsRouteMap";
 
-type Result = {
-  fastest: { km: number; minutes: number };
-  shortest: { km: number; minutes: number };
-};
+type Variant = { km: number; minutes: number; polyline: string };
+type Result = { fastest: Variant; shortest: Variant };
+type Show = "fastest" | "shortest" | "both";
+
+const SHOW_LABELS: Array<{ id: Show; label: string }> = [
+  { id: "fastest", label: "Najszybsza" },
+  { id: "shortest", label: "Najkrótsza" },
+  { id: "both", label: "Oba warianty" },
+];
 
 function fmt(minutes: number): string {
   const h = Math.floor(minutes / 60);
@@ -20,6 +26,7 @@ export function DistanceToStart({ destination }: { destination: string }) {
   const [result, setResult] = useState<Result | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [show, setShow] = useState<Show>("both");
 
   const locate = () => {
     if (!navigator.geolocation) {
@@ -72,20 +79,49 @@ export function DistanceToStart({ destination }: { destination: string }) {
       </div>
 
       {result && (
-        <dl className="mt-2 grid grid-cols-1 gap-1 border-t border-border pt-2 text-xs text-muted-foreground sm:grid-cols-2">
-          <div className="flex flex-wrap gap-x-1.5">
-            <dt className="font-semibold uppercase tracking-wider">Najszybsza:</dt>
-            <dd className="text-foreground">
-              {result.fastest.km} km · {fmt(result.fastest.minutes)}
-            </dd>
+        <>
+          <dl className="mt-2 grid grid-cols-1 gap-1 border-t border-border pt-2 text-xs text-muted-foreground sm:grid-cols-2">
+            <div className="flex flex-wrap items-center gap-x-1.5">
+              <span className="h-2 w-4 rounded-full bg-primary" aria-hidden />
+              <dt className="font-semibold uppercase tracking-wider">Najszybsza:</dt>
+              <dd className="text-foreground">
+                {result.fastest.km} km · {fmt(result.fastest.minutes)}
+              </dd>
+            </div>
+            <div className="flex flex-wrap items-center gap-x-1.5">
+              <span className="h-2 w-4 rounded-full bg-sky-400" aria-hidden />
+              <dt className="font-semibold uppercase tracking-wider">Najkrótsza:</dt>
+              <dd className="text-foreground">
+                {result.shortest.km} km · {fmt(result.shortest.minutes)}
+              </dd>
+            </div>
+          </dl>
+
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {SHOW_LABELS.map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => setShow(opt.id)}
+                aria-pressed={show === opt.id}
+                className={`rounded-sm border px-2 py-1 text-[11px] font-semibold uppercase tracking-wider ${
+                  show === opt.id
+                    ? "border-primary text-primary"
+                    : "border-border text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
           </div>
-          <div className="flex flex-wrap gap-x-1.5">
-            <dt className="font-semibold uppercase tracking-wider">Najkrótsza:</dt>
-            <dd className="text-foreground">
-              {result.shortest.km} km · {fmt(result.shortest.minutes)}
-            </dd>
-          </div>
-        </dl>
+
+          <GpsRouteMap
+            fastest={result.fastest}
+            shortest={result.shortest}
+            show={show}
+            className="mt-2"
+          />
+        </>
       )}
 
       {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
