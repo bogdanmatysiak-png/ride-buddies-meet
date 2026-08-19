@@ -130,8 +130,16 @@ export type NewRideInput = {
   cameraSources?: string[];
 };
 
+// Auto-nazwa: kolejny numer wyprawy danego prowadzącego.
+async function nextAutoTitle(nick: string): Promise<string> {
+  const { count } = await supabase
+    .from("rides")
+    .select("id", { count: "exact", head: true });
+  const n = (count ?? 0) + 1;
+  return `${nick} zapraszam na wyprawę numer ${n}`;
+}
+
 export async function createRide(
-  // Auto-nazwa: kolejny numer wyprawy w skali całej aplikacji.
   input: NewRideInput,
   host: { id: string; nick: string },
 ): Promise<string> {
