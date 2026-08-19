@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Crosshair, Loader2, Navigation } from "lucide-react";
+import { Crosshair, ExternalLink, Loader2, Navigation } from "lucide-react";
 import { routeFromGps } from "@/lib/maps.functions";
 import { GpsRouteMap } from "@/components/GpsRouteMap";
 
-type Variant = { km: number; minutes: number; polyline: string };
-type Result = { fastest: Variant; shortest: Variant };
+type Step = { text: string; km: number; maneuver: string };
+type Variant = { km: number; minutes: number; polyline: string; steps: Step[] };
+type Result = { fastest: Variant; shortest: Variant; origin?: { lat: number; lng: number } };
 type Show = "fastest" | "shortest" | "both";
 
 const SHOW_LABELS: Array<{ id: Show; label: string }> = [
@@ -27,6 +28,14 @@ export function DistanceToStart({ destination }: { destination: string }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [show, setShow] = useState<Show>("both");
+
+  const detailVariant: "fastest" | "shortest" = show === "shortest" ? "shortest" : "fastest";
+  const detail = result ? result[detailVariant] : null;
+  const mapsUrl = result
+    ? `https://www.google.com/maps/dir/?api=1&origin=${
+        result.origin ? `${result.origin.lat},${result.origin.lng}` : ""
+      }&destination=${encodeURIComponent(destination)}&travelmode=driving`
+    : "";
 
   const locate = () => {
     if (!navigator.geolocation) {
@@ -121,6 +130,36 @@ export function DistanceToStart({ destination }: { destination: string }) {
             show={show}
             className="mt-2"
           />
+
+          <a
+            href={mapsUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-2 inline-flex items-center gap-1.5 rounded-sm border border-primary px-2.5 py-1 text-xs font-semibold uppercase tracking-wider text-primary hover:bg-primary/10"
+          >
+            <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+            Otwórz w Google Maps
+          </a>
+
+          {detail && detail.steps.length > 0 && (
+            <div className="mt-3 border-t border-border pt-2">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Punkty po drodze —{" "}
+                {detailVariant === "shortest" ? "najkrótsza" : "najszybsza"}
+              </p>
+              <ol className="mt-1.5 max-h-64 space-y-1.5 overflow-y-auto pr-1">
+                {detail.steps.map((s, i) => (
+                  <li key={`${i}-${s.text}`} className="flex gap-2 text-xs">
+                    <span className="mt-0.5 shrink-0 text-[10px] font-bold text-primary">
+                      {i + 1}.
+                    </span>
+                    <span className="min-w-0 flex-1 text-foreground">{s.text}</span>
+                    <span className="shrink-0 text-muted-foreground">{s.km} km</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
         </>
       )}
 
