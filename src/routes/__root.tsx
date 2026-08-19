@@ -8,7 +8,8 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { Menu, X } from "lucide-react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -151,10 +152,10 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <div className="min-h-screen bg-background">
         <header className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur">
-          <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3">
-            <Link to="/" className="flex items-center gap-2">
-              <span className="h-6 w-1.5 rounded-full bg-primary" />
-              <span className="font-display text-2xl tracking-wide text-foreground">
+          <div className="mx-auto grid max-w-3xl grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3">
+            <Link to="/" className="flex min-w-0 items-center gap-2">
+              <span className="h-6 w-1.5 shrink-0 rounded-full bg-primary" />
+              <span className="truncate font-display text-2xl tracking-wide text-foreground">
                 MOTOR TRIP
               </span>
             </Link>
