@@ -628,6 +628,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      count_pending_account_deletion_objects: {
+        Args: { p_log_id: string }
+        Returns: number
+      }
       delete_my_account: {
         Args: { p_confirm_delete_orphan_groups?: boolean; p_transfers?: Json }
         Returns: Json
@@ -665,6 +669,14 @@ export type Database = {
       mark_account_deletion_done: {
         Args: { p_log_id: string; p_photos_removed: number }
         Returns: boolean
+      }
+      mark_account_deletion_objects_removed: {
+        Args: {
+          p_bucket_id: string
+          p_log_id: string
+          p_object_names: string[]
+        }
+        Returns: number
       }
       set_account_deletion_stage: {
         Args: {

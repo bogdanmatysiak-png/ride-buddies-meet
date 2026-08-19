@@ -91,19 +91,13 @@ export const deleteMyAccount = createServerFn({ method: "POST" })
       throw new Error(error.message);
     }
 
-    const payload = (result ?? {}) as {
-      log_id?: string;
-      photos?: string[];
-    };
+    const payload = (result ?? {}) as { log_id?: string };
 
     const { finishAccountDeletion } = await import("@/lib/account-deletion.server");
-
-    const photos = (payload.photos ?? []).filter((p): p is string => typeof p === "string" && !!p);
 
     await finishAccountDeletion({
       logId: payload.log_id ?? null,
       userId,
-      photos,
       startAt: "database_deleted",
     });
 
