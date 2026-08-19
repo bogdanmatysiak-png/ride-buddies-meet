@@ -158,6 +158,14 @@ describe("finishAccountDeletion", () => {
 
     expect(state.deletions.get(LOG)!.auth_deleted).toBe(true);
     expect(state.deletions.get(LOG)!.status).toBe("auth_deleted");
+
+    // auth_deleted wyłącznie przez mark_account_deletion_done, po deleteUser
+    expect(state.rpcCalls.some((c) => c.name === "mark_account_deletion_done")).toBe(true);
+    expect(
+      state.rpcCalls.some(
+        (c) => c.name === "set_account_deletion_stage" && c.args["p_status"] === "auth_deleted",
+      ),
+    ).toBe(false);
   });
 
   it("ponowne dokończenie operuje tylko na removed = false i nie dotyka cudzych plików", async () => {
