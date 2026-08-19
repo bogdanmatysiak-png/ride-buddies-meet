@@ -131,6 +131,7 @@ export type NewRideInput = {
 };
 
 export async function createRide(
+  // Auto-nazwa: kolejny numer wyprawy w skali całej aplikacji.
   input: NewRideInput,
   host: { id: string; nick: string },
 ): Promise<string> {
