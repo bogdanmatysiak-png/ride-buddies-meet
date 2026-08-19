@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { CloudSun, Droplets, Thermometer, Wind } from "lucide-react";
+import { CloudSun, Droplets, RefreshCw, Thermometer, Wind } from "lucide-react";
 import { forecastRouteWeather, type RouteWeather as RouteWeatherData } from "@/lib/weather.functions";
 
 function hhmm(iso: string) {
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
+  return new Intl.DateTimeFormat("pl-PL", {
+    timeZone: "Europe/Warsaw",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(iso));
 }
 
 const num = (v: number | null, unit: string, digits = 0) =>
@@ -30,8 +32,17 @@ export function RouteWeather({
   const [data, setData] = useState<RouteWeatherData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tick, setTick] = useState(0);
+  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
 
   const ready = !!encodedPolyline && /^\d{4}-\d{2}-\d{2}$/.test(date) && /^\d{2}:\d{2}/.test(time);
+
+  // Odświeżanie prognozy co 10 minut, dopóki panel jest widoczny.
+  useEffect(() => {
+    if (!ready) return;
+    const id = setInterval(() => setTick((t) => t + 1), 600000);
+    return () => clearInterval(id);
+  }, [ready]);
 
   useEffect(() => {
     if (!ready) {
@@ -50,7 +61,10 @@ export function RouteWeather({
       },
     })
       .then((res) => {
-        if (!cancelled) setData(res);
+        if (!cancelled) {
+          setData(res);
+          setUpdatedAt(new Date());
+        }
       })
       .catch((e: unknown) => {
         if (!cancelled) setError(e instanceof Error ? e.message : "Nie udało się pobrać pogody");
@@ -62,7 +76,7 @@ export function RouteWeather({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, encodedPolyline, date, time, minutes]);
+  }, [ready, encodedPolyline, date, time, minutes, tick]);
 
   if (!ready) {
     return (
@@ -77,7 +91,17 @@ export function RouteWeather({
 
   return (
     <div className={`rounded-lg border border-border bg-card p-4 ${className}`}>
-      <Header />
+      <div className="flex items-center justify-between gap-2">
+        <Header />
+        <button
+          type="button"
+          onClick={() => setTick((t) => t + 1)}
+          disabled={loading}
+          className="inline-flex items-center gap-1 rounded-sm border border-border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground transition-colors hover:border-primary hover:text-primary disabled:opacity-50"
+        >
+          <RefreshCw className={`h-3 w-3 ${loading ? "animate-spin" : ""}`} /> Odśwież
+        </button>
+      </div>
       {loading && <p className="mt-2 text-xs text-muted-foreground">Sprawdzam pogodę na trasie…</p>}
       {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
       {data?.notice && <p className="mt-2 text-xs text-primary">{data.notice}</p>}
@@ -112,7 +136,9 @@ export function RouteWeather({
         </ul>
       )}
       <p className="mt-2 text-[11px] text-muted-foreground">
-        Dane: Open-Meteo. Godziny to szacowany czas dojazdu do kolejnych punktów trasy.
+        Dane: Open-Meteo. Godziny (czas lokalny) to szacowany czas dojazdu do kolejnych punktów
+        trasy.
+        {updatedAt && ` Aktualizacja: ${hhmm(updatedAt.toISOString())}.`}
       </p>
     </div>
   );
