@@ -18,6 +18,7 @@ import { RouteMap } from "@/components/RouteMap";
 import { RideChat } from "@/components/RideChat";
 import { RideRatings } from "@/components/RideRatings";
 import { RideCountdown } from "@/components/RideCountdown";
+import { DistanceToStart } from "@/components/DistanceToStart";
 import { RouteWeather } from "@/components/RouteWeather";
 import { cameraSourcesText } from "@/lib/camera-sources";
 
@@ -108,6 +109,8 @@ function RideDetail() {
         durationMinutes={ride.durationMinutes}
         km={ride.km}
       />
+
+      <DistanceToStart destination={ride.start} />
 
       <dl className="mt-4 grid grid-cols-2 gap-3">
         <Fact icon={<CalendarDays className="h-4 w-4" />} label="Zbiórka">
