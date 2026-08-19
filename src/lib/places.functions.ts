@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/google_maps";
@@ -9,6 +10,7 @@ export type PlaceHit = { name: string; address: string };
 
 /** Szybkie wyszukiwanie miejsc (Places API New) do pól zbiórki, celu i punktów „przez”. */
 export const searchPlaces = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input: { query: string }) => schema.parse(input))
   .handler(async ({ data }): Promise<PlaceHit[]> => {
     const lovableKey = process.env["LOVABLE_API_KEY"];

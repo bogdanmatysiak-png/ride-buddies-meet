@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/google_maps";
@@ -53,6 +54,7 @@ async function geocodeOne(
 }
 
 export const geocodeAddresses = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input: { addresses: string[] }) => schema.parse(input))
   .handler(async ({ data }): Promise<GeoPoint[]> => {
     const lovableKey = process.env["LOVABLE_API_KEY"];
