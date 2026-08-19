@@ -38,6 +38,16 @@ function formatDurationShort(ms: number): string {
   return parts.join(" ");
 }
 
+function formatStamp(d: Date): string {
+  return d.toLocaleString("pl-PL", {
+    weekday: "short",
+    day: "numeric",
+    month: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export function RideCountdown({ date, time, durationMinutes, km }: Props) {
   const start = useMemo(() => parseStart(date, time), [date, time]);
   const fallbackMinutes = useMemo(() => {
@@ -61,37 +71,57 @@ export function RideCountdown({ date, time, durationMinutes, km }: Props) {
 
   if (toEnd <= 0) {
     return (
-      <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-3 text-sm">
-        <Clock className="h-4 w-4 text-primary" />
-        <span className="text-muted-foreground">Wyprawa zakończona</span>
+      <div className="mt-4 rounded-lg border border-border bg-card px-4 py-3 text-sm">
+        <div className="flex items-center gap-2">
+          <Clock className="h-4 w-4 shrink-0 text-primary" />
+          <span className="text-muted-foreground">Wyprawa zakończona</span>
+        </div>
+        <Schedule start={start} end={end} />
       </div>
     );
   }
 
   if (toStart <= 0) {
     return (
-      <div className="rounded-lg border border-border bg-card px-4 py-3 text-sm">
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <Clock className="h-4 w-4 text-primary" />
+      <div className="mt-4 rounded-lg border border-border bg-card px-4 py-3 text-sm">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground">
+          <Clock className="h-4 w-4 shrink-0 text-primary" />
           <span>Wyprawa w trakcie</span>
+          <span className="text-foreground">
+            Do końca: <span className="font-semibold text-primary">{formatDuration(toEnd)}</span>
+          </span>
         </div>
-        <div className="mt-1 pl-6 text-foreground">
-          Do końca: <span className="font-semibold text-primary">{formatDuration(toEnd)}</span>
-        </div>
+        <Schedule start={start} end={end} />
       </div>
     );
   }
 
   return (
-    <div className="rounded-lg border border-border bg-card px-4 py-3 text-sm">
-      <div className="flex items-center gap-2 text-muted-foreground">
-        <Clock className="h-4 w-4 text-primary" />
+    <div className="mt-4 rounded-lg border border-border bg-card px-4 py-3 text-sm">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground">
+        <Clock className="h-4 w-4 shrink-0 text-primary" />
         <span>Do startu:</span>
-        <span className="font-semibold text-foreground">{formatDuration(toStart)}</span>
+        <span className="font-semibold tabular-nums text-foreground">{formatDuration(toStart)}</span>
       </div>
-      <div className="mt-1 pl-6 text-muted-foreground">
+      <div className="mt-1 text-muted-foreground sm:pl-6">
         Do końca wyjazdu: <span className="font-semibold text-foreground">{formatDurationShort(toEnd)}</span>
       </div>
+      <Schedule start={start} end={end} />
     </div>
+  );
+}
+
+function Schedule({ start, end }: { start: Date; end: Date }) {
+  return (
+    <dl className="mt-2 grid grid-cols-1 gap-1 border-t border-border pt-2 text-xs text-muted-foreground sm:grid-cols-2">
+      <div className="flex flex-wrap gap-x-1.5">
+        <dt className="font-semibold uppercase tracking-wider">Start:</dt>
+        <dd className="text-foreground">{formatStamp(start)}</dd>
+      </div>
+      <div className="flex flex-wrap gap-x-1.5">
+        <dt className="font-semibold uppercase tracking-wider">Koniec (ok.):</dt>
+        <dd className="text-foreground">{formatStamp(end)}</dd>
+      </div>
+    </dl>
   );
 }
