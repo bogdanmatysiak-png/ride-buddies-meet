@@ -398,7 +398,6 @@ export const routeFromGps = createServerFn({ method: "POST" })
       const normalize = (raw: NonNullable<GpsPayload["routes"]>) =>
         raw
         .filter((r) => !!r.distanceMeters)
-        .filter((r) => !!r.distanceMeters)
         .map((r) => ({
           km: Math.round((r.distanceMeters ?? 0) / 1000),
           meters: r.distanceMeters ?? 0,
