@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { MessageCircle, Send, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { InviteToGroups } from "@/components/InviteToGroups";
 import { formatMessageTime } from "@/lib/chat";
 import {
   deleteGroupMessage,
@@ -114,6 +115,13 @@ export function GroupChat({
                       </span>
                       <span className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-muted-foreground">
                         {formatMessageTime(m.createdAt)}
+                        {!mine && (
+                          <InviteToGroups
+                            inviterId={currentUserId}
+                            inviteeId={m.userId}
+                            inviteeNick={m.nick}
+                          />
+                        )}
                         {canDelete && (
                           <button
                             type="button"
