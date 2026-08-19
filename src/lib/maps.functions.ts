@@ -50,7 +50,7 @@ export const planRoute = createServerFn({ method: "POST" })
       throw new Error("Brak konfiguracji Google Maps");
     }
 
-    const call = (relaxed: boolean) =>
+    const call = (opts: { relaxed: boolean; dropWaypoints?: boolean }) =>
       fetch(`${GATEWAY_URL}/routes/directions/v2:computeRoutes`, {
         method: "POST",
         headers: {
@@ -63,14 +63,16 @@ export const planRoute = createServerFn({ method: "POST" })
         body: JSON.stringify({
           origin: { address: data.start },
           destination: { address: data.end },
-          intermediates: data.waypoints
-            .map((a) => a.trim())
-            .filter((a) => a.length > 1)
-            .map((address) => ({ address })),
+          intermediates: opts.dropWaypoints
+            ? []
+            : data.waypoints
+                .map((a) => a.trim())
+                .filter((a) => a.length > 1)
+                .map((address) => ({ address })),
           travelMode: "DRIVE",
           routingPreference: "TRAFFIC_UNAWARE",
-          computeAlternativeRoutes: !relaxed,
-          routeModifiers: relaxed
+          computeAlternativeRoutes: !opts.relaxed,
+          routeModifiers: opts.relaxed
             ? {}
             : {
                 avoidHighways: data.avoidHighways,
@@ -82,7 +84,7 @@ export const planRoute = createServerFn({ method: "POST" })
         }),
       });
 
-    let response = await call(false);
+    let response = await call({ relaxed: false });
 
     if (response.status === 403) {
       const details: Array<{ reason?: string }> =
@@ -118,11 +120,30 @@ export const planRoute = createServerFn({ method: "POST" })
       }>;
     };
 
-    // Gdy ograniczenia (bez autostrad/płatnych/promów) uniemożliwiają przejazd,
-    // próbujemy jeszcze raz bez nich, zamiast zwracać błąd.
-    if (!(payload.routes ?? []).some((r) => r.distanceMeters)) {
-      response = await call(true);
-      if (response.ok) payload = await response.json();
+    const hasRoute = () => (payload.routes ?? []).some((r) => r.distanceMeters);
+
+    // 1) Gdy ograniczenia (bez autostrad/płatnych/promów) uniemożliwiają przejazd,
+    //    próbujemy jeszcze raz bez nich.
+    if (!hasRoute()) {
+      response = await call({ relaxed: true });
+      const body = await response.text();
+      if (response.ok) payload = JSON.parse(body);
+      else console.error(`Routes API retry (relaxed) [${response.status}]: ${body}`);
+    }
+
+    // 2) Gdy nadal brak trasy, a mamy punkty „przez” – to zwykle jeden z nich
+    //    jest niemapowalny. Liczymy trasę bez punktów pośrednich.
+    if (!hasRoute() && data.waypoints.length > 0) {
+      response = await call({ relaxed: true, dropWaypoints: true });
+      const body = await response.text();
+      if (response.ok) {
+        payload = JSON.parse(body);
+        if (hasRoute()) {
+          console.warn("Routes API: trasa policzona bez punktów „przez”");
+        }
+      } else {
+        console.error(`Routes API retry (no waypoints) [${response.status}]: ${body}`);
+      }
     }
 
     const countTurns = (r: NonNullable<typeof payload.routes>[number]) =>
@@ -142,7 +163,9 @@ export const planRoute = createServerFn({ method: "POST" })
       : candidates[0];
     if (!route?.distanceMeters) {
       throw new Error(
-        "Google nie znalazło trasy między tymi punktami – sprawdź pisownię miejsc (dodaj miasto/kraj) i usuń punkty bez dostępu drogowego.",
+        data.waypoints.length > 0
+          ? `Google nie znalazło trasy dla „${data.start}” → „${data.end}” nawet bez punktów „przez”. Sprawdź pisownię miejsc i dodaj miasto/kraj (np. „Kraków, Polska”).`
+          : `Google nie znalazło trasy dla „${data.start}” → „${data.end}”. Sprawdź pisownię i dodaj miasto/kraj (np. „Kraków, Polska”).`,
       );
     }
 
