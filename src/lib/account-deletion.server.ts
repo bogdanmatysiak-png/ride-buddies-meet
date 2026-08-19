@@ -23,10 +23,13 @@ export type DeletionStatus =
   | "auth_deleted"
   | "failed";
 
+/** Etapy zapisywalne przez set_account_deletion_stage (bez auth_deleted). */
+type StageStatus = Exclude<DeletionStatus, "auth_deleted">;
+
 /** Zapis etapu w audycie. Zwraca false, gdy zapisu nie udało się wykonać. */
 async function setStage(
   logId: string | null,
-  status: DeletionStatus,
+  status: StageStatus,
   errorCode: string | null,
   photosRemoved: number | null,
 ): Promise<boolean> {
