@@ -50,31 +50,39 @@ export const planRoute = createServerFn({ method: "POST" })
       throw new Error("Brak konfiguracji Google Maps");
     }
 
-    const response = await fetch(`${GATEWAY_URL}/routes/directions/v2:computeRoutes`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${lovableKey}`,
-        "X-Connection-Api-Key": mapsKey,
-        "Content-Type": "application/json",
-        "X-Goog-FieldMask":
-          "routes.distanceMeters,routes.duration,routes.polyline.encodedPolyline,routes.legs.steps.navigationInstruction.maneuver",
-      },
-      body: JSON.stringify({
-        origin: { address: data.start },
-        destination: { address: data.end },
-        intermediates: data.waypoints.map((address) => ({ address })),
-        travelMode: "DRIVE",
-        routingPreference: "TRAFFIC_UNAWARE",
-        computeAlternativeRoutes: true,
-        routeModifiers: {
-          avoidHighways: data.avoidHighways,
-          avoidTolls: data.avoidTolls,
-          avoidFerries: data.avoidFerries,
+    const call = (relaxed: boolean) =>
+      fetch(`${GATEWAY_URL}/routes/directions/v2:computeRoutes`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${lovableKey}`,
+          "X-Connection-Api-Key": mapsKey,
+          "Content-Type": "application/json",
+          "X-Goog-FieldMask":
+            "routes.distanceMeters,routes.duration,routes.polyline.encodedPolyline,routes.legs.steps.navigationInstruction.maneuver",
         },
-        languageCode: "pl-PL",
-        units: "METRIC",
-      }),
-    });
+        body: JSON.stringify({
+          origin: { address: data.start },
+          destination: { address: data.end },
+          intermediates: data.waypoints
+            .map((a) => a.trim())
+            .filter((a) => a.length > 1)
+            .map((address) => ({ address })),
+          travelMode: "DRIVE",
+          routingPreference: "TRAFFIC_UNAWARE",
+          computeAlternativeRoutes: !relaxed,
+          routeModifiers: relaxed
+            ? {}
+            : {
+                avoidHighways: data.avoidHighways,
+                avoidTolls: data.avoidTolls,
+                avoidFerries: data.avoidFerries,
+              },
+          languageCode: "pl-PL",
+          units: "METRIC",
+        }),
+      });
+
+    let response = await call(false);
 
     if (response.status === 403) {
       const details: Array<{ reason?: string }> =
@@ -99,7 +107,7 @@ export const planRoute = createServerFn({ method: "POST" })
       throw new Error(`Nie udało się wyznaczyć trasy [${response.status}]`);
     }
 
-    const payload = (await response.json()) as {
+    let payload = (await response.json()) as {
       routes?: Array<{
         distanceMeters?: number;
         duration?: string;
@@ -109,6 +117,14 @@ export const planRoute = createServerFn({ method: "POST" })
         }>;
       }>;
     };
+
+    // Gdy ograniczenia (bez autostrad/płatnych/promów) uniemożliwiają przejazd,
+    // próbujemy jeszcze raz bez nich, zamiast zwracać błąd.
+    if (!(payload.routes ?? []).some((r) => r.distanceMeters)) {
+      response = await call(true);
+      if (response.ok) payload = await response.json();
+    }
+
     const countTurns = (r: NonNullable<typeof payload.routes>[number]) =>
       (r.legs ?? []).reduce(
         (sum, leg) =>
@@ -125,7 +141,9 @@ export const planRoute = createServerFn({ method: "POST" })
       ? [...candidates].sort((a, b) => countTurns(b) - countTurns(a))[0]
       : candidates[0];
     if (!route?.distanceMeters) {
-      throw new Error("Google nie znalazło trasy między tymi punktami");
+      throw new Error(
+        "Google nie znalazło trasy między tymi punktami – sprawdź pisownię miejsc (dodaj miasto/kraj) i usuń punkty bez dostępu drogowego.",
+      );
     }
 
     const seconds = Number(String(route.duration ?? "0s").replace("s", ""));
