@@ -57,6 +57,42 @@ function hourKey(date: Date): string {
   )}T${pad(date.getUTCHours())}:00`;
 }
 
+const TZ = "Europe/Warsaw";
+
+/** Przesunięcie strefy (ms) względem UTC w danym momencie. */
+function tzOffsetMs(ts: number): number {
+  const dtf = new Intl.DateTimeFormat("en-US", {
+    timeZone: TZ,
+    hour12: false,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+  const p: Record<string, string> = {};
+  for (const part of dtf.formatToParts(new Date(ts))) p[part.type] = part.value;
+  const asUtc = Date.UTC(
+    Number(p["year"]),
+    Number(p["month"]) - 1,
+    Number(p["day"]),
+    Number(p["hour"]) === 24 ? 0 : Number(p["hour"]),
+    Number(p["minute"]),
+    Number(p["second"]),
+  );
+  return asUtc - ts;
+}
+
+/** Zamienia lokalną datę/godzinę wyjazdu (Europe/Warsaw) na moment UTC. */
+function localToUtc(date: string, time: string): number {
+  const naive = Date.parse(`${date}T${time}:00Z`);
+  if (Number.isNaN(naive)) return NaN;
+  let ts = naive;
+  for (let i = 0; i < 2; i++) ts = naive - tzOffsetMs(ts);
+  return ts;
+}
+
 const LABELS = ["Start", "25% trasy", "Połowa trasy", "75% trasy", "Cel"];
 
 export async function fetchRouteWeather(input: {
@@ -68,7 +104,7 @@ export async function fetchRouteWeather(input: {
   const decoded = decodePolyline(input.encodedPolyline);
   if (decoded.length === 0) return { points: [], notice: "Brak kształtu trasy" };
 
-  const departure = new Date(`${input.date}T${input.time || "09:00"}:00Z`);
+  const departure = new Date(localToUtc(input.date, input.time || "09:00"));
   if (Number.isNaN(departure.getTime())) {
     return { points: [], notice: "Nieprawidłowa data lub godzina wyjazdu" };
   }

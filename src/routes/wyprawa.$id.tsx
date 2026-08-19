@@ -18,6 +18,7 @@ import { RouteMap } from "@/components/RouteMap";
 import { RideChat } from "@/components/RideChat";
 import { RideRatings } from "@/components/RideRatings";
 import { RideCountdown } from "@/components/RideCountdown";
+import { RouteWeather } from "@/components/RouteWeather";
 import { cameraSourcesText } from "@/lib/camera-sources";
 
 export const Route = createFileRoute("/wyprawa/$id")({
@@ -167,6 +168,13 @@ function RideDetail() {
           start={ride.start}
           end={ride.end}
           waypoints={ride.waypoints ?? []}
+          className="mt-4"
+        />
+        <RouteWeather
+          encodedPolyline={ride.encodedPolyline}
+          date={ride.date}
+          time={ride.time}
+          minutes={ride.durationMinutes ?? Math.round((ride.km / 60) * 60)}
           className="mt-4"
         />
         <p className="mt-2 text-xs text-muted-foreground">
