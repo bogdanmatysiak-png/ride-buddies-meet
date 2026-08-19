@@ -138,26 +138,6 @@ export function DistanceToStart({ destination }: { destination: string }) {
             <ExternalLink className="h-3.5 w-3.5 shrink-0" />
             Otwórz w Google Maps
           </a>
-
-          {detail && detail.steps.length > 0 && (
-            <div className="mt-3 border-t border-border pt-2">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Punkty po drodze —{" "}
-                {detailVariant === "shortest" ? "najkrótsza" : "najszybsza"}
-              </p>
-              <ol className="mt-1.5 max-h-64 space-y-1.5 overflow-y-auto pr-1">
-                {detail.steps.map((s, i) => (
-                  <li key={`${i}-${s.text}`} className="flex gap-2 text-xs">
-                    <span className="mt-0.5 shrink-0 text-[10px] font-bold text-primary">
-                      {i + 1}.
-                    </span>
-                    <span className="min-w-0 flex-1 text-foreground">{s.text}</span>
-                    <span className="shrink-0 text-muted-foreground">{s.km} km</span>
-                  </li>
-                ))}
-              </ol>
-            </div>
-          )}
         </>
       )}
 
