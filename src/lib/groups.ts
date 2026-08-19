@@ -296,9 +296,12 @@ export async function cancelInvite(memberId: string) {
   if (error) throw error;
 }
 
-/** Zmiana roli członka — tylko właściciel grupy (pilnuje tego baza). */
-export async function setMemberRole(memberId: string, role: GroupRole) {
-  const { error } = await supabase.from("group_members").update({ role }).eq("id", memberId);
+/** Zmiana roli członka — wyłącznie przez RPC (baza pilnuje uprawnień i zakresu ról). */
+export async function setMemberRole(memberId: string, role: Exclude<GroupRole, "owner">) {
+  const { error } = await supabase.rpc("change_group_member_role", {
+    p_member_id: memberId,
+    p_new_role: role,
+  });
   if (error) throw error;
 }
 
