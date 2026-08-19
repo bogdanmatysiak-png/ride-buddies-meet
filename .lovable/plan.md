@@ -21,7 +21,7 @@ DROP and re-create the exact-named policy so a user can only attempt to update t
 
 Logic:
 - If the caller is an admin (`public.has_role(auth.uid(), 'admin')`) or the owner of the group referenced by `OLD.group_id`, return `NEW` unchanged.
-- Otherwise, only allow the update when the caller is updating their own pending invitation to `accepted` and leaves every other tracked column unchanged (`user_id`, `group_id`, `invited_by`, `role`, `created_at`).
+- Otherwise, only allow the update when the caller is updating their own pending invitation to `accepted` and leaves every other tracked column unchanged (`id`, `user_id`, `group_id`, `invited_by`, `role`, `created_at`).
 - `updated_at` is not compared because `public.touch_updated_at()` will modify it.
 - Any other change raises `RAISE EXCEPTION 'Mozesz jedynie zaakceptowac wlasne oczekujace zaproszenie'`.
 
@@ -67,6 +67,7 @@ BEGIN
   -- Non-owners/non-admins may only accept their own pending invitation
   IF (
     OLD.user_id = auth.uid()
+    AND NEW.id IS NOT DISTINCT FROM OLD.id
     AND OLD.status = 'pending'
     AND NEW.status = 'accepted'
     AND NEW.user_id IS NOT DISTINCT FROM OLD.user_id
