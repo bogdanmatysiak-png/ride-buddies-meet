@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { ImagePlus, MessageCircle, Send, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { InviteToGroups } from "@/components/InviteToGroups";
 import {
   deleteRideMessage,
   fetchRideMessages,
@@ -127,6 +128,13 @@ export function RideChat({
                   </span>
                   <span className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-muted-foreground">
                     {formatMessageTime(m.createdAt)}
+                    {!mine && (
+                      <InviteToGroups
+                        inviterId={currentUserId}
+                        inviteeId={m.userId}
+                        inviteeNick={m.nick}
+                      />
+                    )}
                     {canDelete && (
                       <button
                         type="button"
