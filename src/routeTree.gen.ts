@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as RankingRouteImport } from './routes/ranking'
+import { Route as UsunKontoRouteImport } from './routes/usun-konto'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedGrupyRouteImport } from './routes/_authenticated/grupy'
 import { Route as AuthenticatedNowaRouteImport } from './routes/_authenticated/nowa'
@@ -44,6 +45,11 @@ const AuthRoute = AuthRouteImport.update({
 const RankingRoute = RankingRouteImport.update({
   id: '/ranking',
   path: '/ranking',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UsunKontoRoute = UsunKontoRouteImport.update({
+  id: '/usun-konto',
+  path: '/usun-konto',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
@@ -120,6 +126,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/ranking': typeof RankingRoute
+  '/usun-konto': typeof UsunKontoRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/grupy': typeof AuthenticatedGrupyRoute
   '/nowa': typeof AuthenticatedNowaRoute
@@ -138,6 +145,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/ranking': typeof RankingRoute
+  '/usun-konto': typeof UsunKontoRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/grupy': typeof AuthenticatedGrupyRoute
   '/nowa': typeof AuthenticatedNowaRoute
@@ -158,6 +166,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/ranking': typeof RankingRoute
+  '/usun-konto': typeof UsunKontoRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/grupy': typeof AuthenticatedGrupyRoute
   '/_authenticated/nowa': typeof AuthenticatedNowaRoute
@@ -178,6 +187,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/ranking'
+    | '/usun-konto'
     | '/admin'
     | '/grupy'
     | '/nowa'
@@ -196,6 +206,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/ranking'
+    | '/usun-konto'
     | '/admin'
     | '/grupy'
     | '/nowa'
@@ -215,6 +226,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/ranking'
+    | '/usun-konto'
     | '/_authenticated/admin'
     | '/_authenticated/grupy'
     | '/_authenticated/nowa'
@@ -235,6 +247,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   RankingRoute: typeof RankingRoute
+  UsunKontoRoute: typeof UsunKontoRoute
   MotocyklistaIdRoute: typeof MotocyklistaIdRoute
   WyprawaIdRoute: typeof WyprawaIdRoute
   ApiPublicRideAlertsRoute: typeof ApiPublicRideAlertsRoute
@@ -269,6 +282,13 @@ declare module '@tanstack/react-router' {
       path: '/ranking'
       fullPath: '/ranking'
       preLoaderRoute: typeof RankingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/usun-konto': {
+      id: '/usun-konto'
+      path: '/usun-konto'
+      fullPath: '/usun-konto'
+      preLoaderRoute: typeof UsunKontoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/admin': {
@@ -397,6 +417,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   RankingRoute: RankingRoute,
+  UsunKontoRoute: UsunKontoRoute,
   MotocyklistaIdRoute: MotocyklistaIdRoute,
   WyprawaIdRoute: WyprawaIdRoute,
   ApiPublicRideAlertsRoute: ApiPublicRideAlertsRoute,

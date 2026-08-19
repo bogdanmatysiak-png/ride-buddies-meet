@@ -7,6 +7,7 @@ import { useIsAdmin, useProfile, useSession } from "@/hooks/useAuth";
 import { fetchRides, ridesQueryKey } from "@/lib/rides";
 import { RideCard } from "@/components/RideCard";
 import { RoutePrefsPicker } from "@/components/RoutePrefsPicker";
+import { DeleteAccountDialog } from "@/components/DeleteAccountDialog";
 import {
   defaultRoutePrefs,
   prefsFromProfile,
@@ -45,6 +46,7 @@ function ProfilePage() {
   const [notifyInvite, setNotifyInvite] = useState(true);
   const [notifyAccepted, setNotifyAccepted] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   useEffect(() => {
     if (profile) {
@@ -234,6 +236,26 @@ function ProfilePage() {
           </p>
         )}
       </div>
+
+      <section className="mt-14 rounded-lg border border-destructive/60 bg-card p-5">
+        <h2 className="text-2xl text-destructive">Strefa konta</h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Trwałe usunięcie konta razem z profilem, prowadzonymi wyprawami, zdjęciami, członkostwami
+          i zaproszeniami do grup oraz powiadomieniami. Operacji nie da się cofnąć.{" "}
+          <Link to="/usun-konto" className="font-semibold text-primary">
+            Dowiedz się więcej
+          </Link>
+        </p>
+        <button
+          type="button"
+          onClick={() => setDeleteOpen(true)}
+          className="mt-4 rounded-md bg-destructive px-5 py-3 text-sm font-semibold text-destructive-foreground transition-opacity hover:opacity-90"
+        >
+          Usuń konto i wszystkie moje dane
+        </button>
+      </section>
+
+      {deleteOpen && <DeleteAccountDialog onClose={() => setDeleteOpen(false)} />}
     </main>
   );
 }
