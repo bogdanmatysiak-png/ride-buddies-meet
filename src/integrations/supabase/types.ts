@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_deletions: {
+        Row: {
+          auth_deleted: boolean
+          created_at: string
+          groups_deleted: number
+          groups_transferred: number
+          id: string
+          photos_removed: number
+          rides_deleted: number
+          user_id: string
+        }
+        Insert: {
+          auth_deleted?: boolean
+          created_at?: string
+          groups_deleted?: number
+          groups_transferred?: number
+          id?: string
+          photos_removed?: number
+          rides_deleted?: number
+          user_id: string
+        }
+        Update: {
+          auth_deleted?: boolean
+          created_at?: string
+          groups_deleted?: number
+          groups_transferred?: number
+          id?: string
+          photos_removed?: number
+          rides_deleted?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       camera_reports: {
         Row: {
           address: string
@@ -551,6 +584,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      delete_my_account: {
+        Args: { p_confirm_delete_orphan_groups?: boolean; p_transfers?: Json }
+        Returns: Json
+      }
       has_group_link: {
         Args: { _group_id: string; _user_id: string }
         Returns: boolean
@@ -569,6 +606,10 @@ export type Database = {
       is_group_owner: {
         Args: { _group_id: string; _user_id: string }
         Returns: boolean
+      }
+      mark_account_deletion_done: {
+        Args: { p_log_id: string; p_photos_removed: number }
+        Returns: undefined
       }
       wants_notification: {
         Args: { _kind: string; _user_id: string }
