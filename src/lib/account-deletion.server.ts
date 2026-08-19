@@ -29,12 +29,15 @@ async function setStage(
   photosRemoved: number | null,
 ): Promise<boolean> {
   if (!logId) return false;
-  const { data, error } = await supabaseAdmin.rpc("set_account_deletion_stage", {
-    p_log_id: logId,
-    p_status: status,
-    p_last_error_code: errorCode ?? undefined,
-    p_photos_removed: photosRemoved ?? undefined,
-  });
+  const args: {
+    p_log_id: string;
+    p_status: string;
+    p_last_error_code?: string;
+    p_photos_removed?: number;
+  } = { p_log_id: logId, p_status: status };
+  if (errorCode !== null) args.p_last_error_code = errorCode;
+  if (photosRemoved !== null) args.p_photos_removed = photosRemoved;
+  const { data, error } = await supabaseAdmin.rpc("set_account_deletion_stage", args);
   if (error) {
     console.error("[account-deletion] audit stage write failed", {
       logId,
