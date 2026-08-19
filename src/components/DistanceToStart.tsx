@@ -3,9 +3,16 @@ import { useServerFn } from "@tanstack/react-start";
 import { Crosshair, ExternalLink, Loader2, Navigation } from "lucide-react";
 import { routeFromGps } from "@/lib/maps.functions";
 import { GpsRouteMap } from "@/components/GpsRouteMap";
+import { tollText, type TollEstimate } from "@/lib/tolls";
 
 type Step = { text: string; km: number; maneuver: string };
-type Variant = { km: number; minutes: number; polyline: string; steps: Step[] };
+type Variant = {
+  km: number;
+  minutes: number;
+  polyline: string;
+  toll: TollEstimate | null;
+  steps: Step[];
+};
 type Result = { fastest: Variant; shortest: Variant; origin?: { lat: number; lng: number } };
 type Show = "fastest" | "shortest" | "both";
 
@@ -103,6 +110,12 @@ export function DistanceToStart({ destination }: { destination: string }) {
               </dd>
             </div>
           </dl>
+
+          <p className="mt-1.5 text-xs text-muted-foreground">
+            {show === "shortest"
+              ? tollText(result.shortest.toll)
+              : tollText(result.fastest.toll)}
+          </p>
 
           <div className="mt-2 flex flex-wrap gap-1.5">
             {SHOW_LABELS.map((opt) => (
