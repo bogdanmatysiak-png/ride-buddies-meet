@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { countSpeedEnforcement } from "./speed-cameras.server";
 import { tollFromInfo, type TollInfo } from "./tolls";
@@ -193,6 +194,7 @@ export const planRoute = createServerFn({ method: "POST" })
   });
 
 export const optimizeWaypoints = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(
     (input: {
       start: string;
