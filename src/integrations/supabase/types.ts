@@ -543,6 +543,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_read_chat_photo: { Args: { _object_name: string }; Returns: boolean }
       has_group_link: {
         Args: { _group_id: string; _user_id: string }
         Returns: boolean
