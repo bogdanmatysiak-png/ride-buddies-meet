@@ -29,6 +29,7 @@ function okResponse(body: unknown) {
 describe("fetchRouteWeather", () => {
   beforeEach(() => {
     __clearRouteWeatherCache();
+    delete process.env["VISUAL_CROSSING_API_KEY"];
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-20T07:00:00Z"));
   });
@@ -163,5 +164,109 @@ describe("fetchRouteWeather", () => {
     vi.setSystemTime(new Date("2026-08-20T07:06:00Z")); // cooldown 5 min minął
     await fetchRouteWeather(input);
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("fallback Visual Crossing", () => {
+  const KEY = "test-secret-key";
+
+  function vcResponse(temp: number) {
+    return okResponse({
+      days: [
+        {
+          hours: times.map((t, i) => ({
+            datetimeEpoch: Math.floor(Date.parse(`${t}:00Z`) / 1000),
+            temp: temp + i,
+            cloudcover: 40,
+            windspeed: 12,
+            windgust: 22,
+            precip: 0.2,
+            precipprob: 55,
+          })),
+        },
+      ],
+    });
+  }
+
+  beforeEach(() => {
+    __clearRouteWeatherCache();
+    process.env["VISUAL_CROSSING_API_KEY"] = KEY;
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-20T07:00:00Z"));
+  });
+  afterEach(() => {
+    delete process.env["VISUAL_CROSSING_API_KEY"];
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it("Open-Meteo 429 → dane z Visual Crossing, bez wycieku klucza", async () => {
+    const logs: string[] = [];
+    vi.spyOn(console, "error").mockImplementation((...a: unknown[]) => logs.push(String(a)));
+    vi.spyOn(console, "warn").mockImplementation((...a: unknown[]) => logs.push(String(a)));
+    const fetchMock = vi.fn(async (url: string) =>
+      String(url).includes("open-meteo")
+        ? ({ ok: false, status: 429, json: async () => ({}) } as unknown as Response)
+        : vcResponse(20),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await fetchRouteWeather(input);
+
+    expect(res.notice).toBeNull();
+    expect(res.points.length).toBeGreaterThan(0);
+    expect(res.points[0]!.temperature).not.toBeNull();
+    expect(res.points[0]!.cloudCover).toBe(40);
+    expect(res.points[0]!.precipitationChance).toBe(55);
+    const vcUrl = String(
+      fetchMock.mock.calls.map((c) => String(c[0])).find((u) => u.includes("visualcrossing"))!,
+    );
+    expect(vcUrl).toContain("unitGroup=metric");
+    expect(vcUrl).toContain("include=hours");
+    expect(JSON.stringify(res)).not.toContain(KEY);
+    expect(logs.join("\n")).not.toContain(KEY);
+  });
+
+  it("sukces Visual Crossing jest cache'owany", async () => {
+    const fetchMock = vi.fn(async (url: string) =>
+      String(url).includes("open-meteo")
+        ? ({ ok: false, status: 500, json: async () => ({}) } as unknown as Response)
+        : vcResponse(20),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await fetchRouteWeather(input);
+    const callsAfterFirst = fetchMock.mock.calls.length;
+    const second = await fetchRouteWeather(input);
+    expect(fetchMock.mock.calls.length).toBe(callsAfterFirst);
+    expect(second.notice).toBeNull();
+  });
+
+  it("w czasie cooldownu Open-Meteo pyta tylko Visual Crossing", async () => {
+    const fetchMock = vi.fn(async (url: string) =>
+      String(url).includes("open-meteo")
+        ? ({ ok: false, status: 429, json: async () => ({}) } as unknown as Response)
+        : vcResponse(20),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await fetchRouteWeather(input); // 429 → cooldown, dane z VC
+    __clearRouteWeatherCacheOnly();
+    fetchMock.mockClear();
+
+    const res = await fetchRouteWeather({ ...input, minutes: 90 });
+    expect(res.notice).toBeNull();
+    expect(fetchMock.mock.calls.every((c) => String(c[0]).includes("visualcrossing"))).toBe(true);
+  });
+
+  it("oba źródła zawodzą i brak cache → jasny komunikat", async () => {
+    const fetchMock = vi.fn(
+      async () => ({ ok: false, status: 500, json: async () => ({}) }) as unknown as Response,
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await fetchRouteWeather(input);
+    expect(res.points).toEqual([]);
+    expect(res.notice).toBe("Nie udało się pobrać prognozy. Spróbuj ponownie za kilka minut.");
   });
 });
