@@ -133,7 +133,6 @@ export async function fetchRouteWeather(input: {
       if (idx < 0 && times.length > 0) {
         notice = "Prognoza jest dostępna maksymalnie 16 dni w przód";
       }
-      onst val = (key: string) => {
   const value = idx >= 0 ? hourly[key]?.[idx] : null;
 
   if (i === 0 && value === undefined) {
