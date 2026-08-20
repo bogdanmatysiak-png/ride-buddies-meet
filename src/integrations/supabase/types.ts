@@ -620,6 +620,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      __store_cron_secret_v2: { Args: { p_value: string }; Returns: boolean }
       can_read_chat_photo: { Args: { _object_name: string }; Returns: boolean }
       change_group_member_role: {
         Args: {
