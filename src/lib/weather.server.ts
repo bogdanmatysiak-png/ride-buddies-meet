@@ -206,7 +206,15 @@ export async function fetchRouteWeather(input: {
     };
   }
   if (cached) cache.delete(key);
-  if (cooling) return { points: [], notice: RATE_LIMIT_NOTICE };
+  if (cooling) {
+    // W czasie cooldownu pomijamy Open-Meteo i próbujemy zapasowego dostawcy.
+    if (!process.env["VISUAL_CROSSING_API_KEY"]) {
+      return { points: [], notice: RATE_LIMIT_NOTICE };
+    }
+    const cooled = await computeRouteWeather(input, decoded, departure, { skipOpenMeteo: true });
+    if (cooled.cacheable) storeInCache(key, cooled.value);
+    return cooled.value;
+  }
 
   const { value, cacheable } = await computeRouteWeather(input, decoded, departure);
   if (cacheable) storeInCache(key, value);
