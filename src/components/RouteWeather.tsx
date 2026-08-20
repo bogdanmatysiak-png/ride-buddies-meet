@@ -110,14 +110,12 @@ export function RouteWeather({
           {data.points.map((p) => (
             <li key={p.label + p.at} className="rounded-md border border-border bg-secondary/40 p-3">
               <div className="flex items-baseline justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-foreground">
-                  {p.label}
-                </span>
+                <span className="text-xs font-semibold uppercase tracking-wider text-foreground">{p.label}</span>
                 <span className="text-[11px] text-muted-foreground">ok. {hhmm(p.at)}</span>
               </div>
               <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-muted-foreground sm:grid-cols-4">
                 <Metric icon={<Thermometer className="h-3.5 w-3.5" />} label="Temperatura">
-                  {num(p.temperature, " °C")}
+                  TEST: {String(p.temperature)} / {num(p.temperature, " °C")}
                 </Metric>
                 <Metric icon={<CloudSun className="h-3.5 w-3.5" />} label="Zachmurzenie">
                   {num(p.cloudCover, " %")}
@@ -136,8 +134,7 @@ export function RouteWeather({
         </ul>
       )}
       <p className="mt-2 text-[11px] text-muted-foreground">
-        Dane: Open-Meteo. Godziny (czas lokalny) to szacowany czas dojazdu do kolejnych punktów
-        trasy.
+        Dane: Open-Meteo. Godziny (czas lokalny) to szacowany czas dojazdu do kolejnych punktów trasy.
         {updatedAt && ` Aktualizacja: ${hhmm(updatedAt.toISOString())}.`}
       </p>
     </div>
@@ -146,21 +143,11 @@ export function RouteWeather({
 
 function Header() {
   return (
-    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-      Pogoda na trasie
-    </span>
+    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Pogoda na trasie</span>
   );
 }
 
-function Metric({
-  icon,
-  label,
-  children,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  children: React.ReactNode;
-}) {
+function Metric({ icon, label, children }: { icon: React.ReactNode; label: string; children: React.ReactNode }) {
   return (
     <div>
       <span className="flex items-center gap-1 text-[10px] uppercase tracking-wider">
