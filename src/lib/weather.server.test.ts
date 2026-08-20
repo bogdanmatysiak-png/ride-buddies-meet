@@ -251,7 +251,6 @@ describe("fallback Visual Crossing", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     await fetchRouteWeather(input); // 429 → cooldown, dane z VC
-    __clearRouteWeatherCacheOnly();
     fetchMock.mockClear();
 
     const res = await fetchRouteWeather({ ...input, minutes: 90 });
