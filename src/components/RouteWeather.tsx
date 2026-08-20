@@ -115,7 +115,7 @@ export function RouteWeather({
               </div>
               <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-muted-foreground sm:grid-cols-4">
                 <Metric icon={<Thermometer className="h-3.5 w-3.5" />} label="Temperatura">
-                  TEST: {String(p.temperature)} / {num(p.temperature, " °C")}
+                  {num(p.temperature, " °C")}
                 </Metric>
                 <Metric icon={<CloudSun className="h-3.5 w-3.5" />} label="Zachmurzenie">
                   {num(p.cloudCover, " %")}
