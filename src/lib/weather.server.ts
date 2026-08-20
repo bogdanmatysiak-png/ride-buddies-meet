@@ -133,14 +133,7 @@ export async function fetchRouteWeather(input: {
       if (idx < 0 && times.length > 0) {
         notice = "Prognoza jest dostępna maksymalnie 16 dni w przód";
       }
-  const value = idx >= 0 ? hourly[key]?.[idx] : null;
-
-  if (i === 0 && value === undefined) {
-    notice = `Brakuje danych „${key}”. Dostępne pola: ${Object.keys(hourly).join(", ")}`;
-  }
-
-  return value ?? null;
-};
+      const val = (key: string) => (idx >= 0 ? (hourly[key]?.[idx] ?? null) : null);
       results[i] = {
         label: LABELS[Math.round(sample.fraction * 4)] ?? `${Math.round(sample.fraction * 100)}%`,
         lat: sample.point[0],
