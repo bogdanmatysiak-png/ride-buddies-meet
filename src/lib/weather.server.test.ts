@@ -38,7 +38,7 @@ describe("fetchRouteWeather", () => {
   });
 
   it("wykonuje jedno zbiorcze zapytanie i mapuje odpowiedzi po kolei", async () => {
-    const fetchMock = vi.fn(async () => okResponse([block(0), block(1), block(2)]));
+    const fetchMock = vi.fn(async (_url: string) => okResponse([block(0), block(1), block(2)]));
     vi.stubGlobal("fetch", fetchMock);
 
     const res = await fetchRouteWeather(input);
@@ -50,11 +50,11 @@ describe("fetchRouteWeather", () => {
     expect(url).toContain("timezone=UTC");
     expect(url).toContain("precipitation_probability");
     expect(res.notice).toBeNull();
-    // punkt 0 czyta blok 0 (offset 0) o 09:00 UTC, ostatni punkt blok 2 (offset 2) o 12:00 UTC
+    // punkt 0 czyta blok 0 (offset 0) o 09:00 UTC, ostatni punkt blok 2 (offset 2) o 10:00 UTC
     expect(res.points[0]!.temperature).toBe(15);
     expect(res.points[0]!.cloudCover).toBe(50);
     expect(res.points[res.points.length - 1]!.cloudCover).toBe(52);
-    expect(res.points[res.points.length - 1]!.temperature).toBe(20);
+    expect(res.points[res.points.length - 1]!.temperature).toBe(18); // 10:00 UTC w bloku 2
   });
 
   it("cache hit, a po wygaśnięciu TTL pobiera ponownie", async () => {
