@@ -95,6 +95,24 @@ function localToUtc(date: string, time: string): number {
 
 const LABELS = ["Start", "25% trasy", "Połowa trasy", "75% trasy", "Cel"];
 
+const RATE_LIMIT_NOTICE = "Serwis pogodowy jest chwilowo obciążony. Spróbuj ponownie za kilka minut.";
+
+/** Cache prognoz: TTL 10 minut, maksymalnie 50 wpisów (najstarsze usuwane pierwsze). */
+const CACHE_TTL_MS = 600000;
+const CACHE_MAX_ENTRIES = 50;
+const cache = new Map<string, { expiresAt: number; value: RouteWeather }>();
+
+function cacheKey(input: { encodedPolyline: string; date: string; time: string; minutes: number }) {
+  return `${input.date}|${input.time}|${Math.round(input.minutes)}|${input.encodedPolyline}`;
+}
+
+/** Tylko dla testów: czyści pamięć podręczną prognoz. */
+export function __clearRouteWeatherCache() {
+  cache.clear();
+}
+
+type HourlyBlock = Record<string, Array<number | null> | string[] | undefined>;
+
 export async function fetchRouteWeather(input: {
   encodedPolyline: string;
   date: string;
@@ -109,27 +127,46 @@ export async function fetchRouteWeather(input: {
     return { points: [], notice: "Nieprawidłowa data lub godzina wyjazdu" };
   }
 
+  const key = cacheKey(input);
+  const cached = cache.get(key);
+  if (cached && cached.expiresAt > Date.now()) return cached.value;
+  if (cached) cache.delete(key);
+
   const samples = pickAlong(decoded, Math.min(5, Math.max(2, decoded.length)));
   const results: RouteWeatherPoint[] = [];
   let notice: string | null = null;
+  let cacheable = true;
 
-  await Promise.all(
-    samples.map(async (sample, i) => {
+  // Jedno zbiorcze zapytanie dla wszystkich punktów trasy (listy latitude/longitude w tej samej kolejności).
+  const url =
+    `https://api.open-meteo.com/v1/forecast?latitude=${samples.map((s) => s.point[0].toFixed(4)).join(",")}` +
+    `&longitude=${samples.map((s) => s.point[1].toFixed(4)).join(",")}` +
+    `&hourly=temperature_2m,cloud_cover,wind_speed_10m,wind_gusts_10m,precipitation,precipitation_probability` +
+    `&forecast_days=16&timezone=UTC`;
+
+  let blocks: HourlyBlock[] = [];
+  try {
+    const res = await fetch(url);
+    if (res.ok) {
+      const json = (await res.json()) as { hourly?: HourlyBlock } | Array<{ hourly?: HourlyBlock }>;
+      const list = Array.isArray(json) ? json : [json];
+      blocks = list.map((entry) => entry?.hourly ?? {});
+    } else {
+      cacheable = false;
+      notice =
+        res.status === 429
+          ? RATE_LIMIT_NOTICE
+          : `Serwis pogodowy odpowiedział błędem (${res.status})`;
+    }
+  } catch {
+    cacheable = false;
+    notice = "Serwis pogodowy chwilowo niedostępny";
+  }
+
+  samples.forEach((sample, i) => {
       const at = new Date(departure.getTime() + sample.fraction * input.minutes * 60000);
-      const url =
-        `https://api.open-meteo.com/v1/forecast?latitude=${sample.point[0].toFixed(4)}` +
-        `&longitude=${sample.point[1].toFixed(4)}` +
-        `&hourly=temperature_2m,cloud_cover,wind_speed_10m,wind_gusts_10m,precipitation,precipitation_probability` +
-        `&forecast_days=16&timezone=UTC`;
-      let hourly: Record<string, Array<number | null>> & { time?: string[] } = {};
-      try {
-        const res = await fetch(url);
-        if (res.ok) hourly = ((await res.json()) as { hourly?: typeof hourly }).hourly ?? {};
-        else notice = `Serwis pogodowy odpowiedział błędem (${res.status})`;
-      } catch {
-        notice = "Serwis pogodowy chwilowo niedostępny";
-      }
-      const times = (hourly.time as string[] | undefined) ?? [];
+      const hourly = blocks[i] ?? blocks[0] ?? {};
+      const times = (hourly["time"] as string[] | undefined) ?? [];
       if (times.length === 0) {
         notice = notice ?? "Serwis pogodowy nie zwrócił danych godzinowych";
       }
@@ -156,9 +193,9 @@ export async function fetchRouteWeather(input: {
       const missing: string[] = [];
       const val = (key: string) => {
         if (idx < 0) return null;
-        const value = hourly[key]?.[idx];
+        const value = (hourly[key] as Array<number | null> | undefined)?.[idx];
         if (value === undefined) missing.push(key);
-        return value ?? null;
+        return typeof value === "number" ? value : null;
       };
       results[i] = {
         label: LABELS[Math.round(sample.fraction * 4)] ?? `${Math.round(sample.fraction * 100)}%`,
@@ -175,8 +212,15 @@ export async function fetchRouteWeather(input: {
       if (idx >= 0 && missing.length > 0) {
         notice = notice ?? "Serwis pogodowy zwrócił niepełne dane — część wartości może być nieznana";
       }
-    }),
-  );
+  });
 
-  return { points: results.filter(Boolean), notice };
+  const value: RouteWeather = { points: results.filter(Boolean), notice };
+  if (cacheable) {
+    if (cache.size >= CACHE_MAX_ENTRIES) {
+      const oldest = cache.keys().next();
+      if (!oldest.done) cache.delete(oldest.value);
+    }
+    cache.set(key, { expiresAt: Date.now() + CACHE_TTL_MS, value });
+  }
+  return value;
 }
