@@ -125,15 +125,41 @@ export async function fetchRouteWeather(input: {
       try {
         const res = await fetch(url);
         if (res.ok) hourly = ((await res.json()) as { hourly?: typeof hourly }).hourly ?? {};
+        else notice = `Serwis pogodowy odpowiedział błędem (${res.status})`;
       } catch {
         notice = "Serwis pogodowy chwilowo niedostępny";
       }
       const times = (hourly.time as string[] | undefined) ?? [];
-      const idx = times.indexOf(hourKey(at));
+      if (times.length === 0) {
+        notice = notice ?? "Serwis pogodowy nie zwrócił danych godzinowych";
+      }
+      // Dopasowanie do najbliższej pełnej godziny prognozy (czasy punktów trasy nie są pełnymi godzinami).
+      let idx = times.indexOf(hourKey(at));
+      if (idx < 0 && times.length > 0) {
+        const target = at.getTime();
+        let best = -1;
+        let bestDiff = Infinity;
+        for (let t = 0; t < times.length; t++) {
+          const ts = Date.parse(`${times[t]}Z`);
+          const diff = Math.abs(ts - target);
+          if (!Number.isNaN(ts) && diff < bestDiff) {
+            bestDiff = diff;
+            best = t;
+          }
+        }
+        // Akceptuj tylko dopasowanie w granicy 1 godziny.
+        if (best >= 0 && bestDiff <= 3600000) idx = best;
+      }
       if (idx < 0 && times.length > 0) {
         notice = "Prognoza jest dostępna maksymalnie 16 dni w przód";
       }
-      const val = (key: string) => (idx >= 0 ? (hourly[key]?.[idx] ?? null) : null);
+      const missing: string[] = [];
+      const val = (key: string) => {
+        if (idx < 0) return null;
+        const value = hourly[key]?.[idx];
+        if (value === undefined) missing.push(key);
+        return value ?? null;
+      };
       results[i] = {
         label: LABELS[Math.round(sample.fraction * 4)] ?? `${Math.round(sample.fraction * 100)}%`,
         lat: sample.point[0],
@@ -146,6 +172,9 @@ export async function fetchRouteWeather(input: {
         precipitation: val("precipitation"),
         precipitationChance: val("precipitation_probability"),
       };
+      if (idx >= 0 && missing.length > 0) {
+        notice = notice ?? "Serwis pogodowy zwrócił niepełne dane — część wartości może być nieznana";
+      }
     }),
   );
 
