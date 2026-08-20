@@ -96,19 +96,64 @@ function localToUtc(date: string, time: string): number {
 const LABELS = ["Start", "25% trasy", "Połowa trasy", "75% trasy", "Cel"];
 
 const RATE_LIMIT_NOTICE = "Serwis pogodowy jest chwilowo obciążony. Spróbuj ponownie za kilka minut.";
+const RATE_LIMIT_STALE_NOTICE =
+  "Serwis pogodowy jest chwilowo obciążony. Wyświetlam ostatnią dostępną prognozę.";
+const STALE_NOTICE = "Wyświetlam ostatnią dostępną prognozę. Odświeżenie może potrwać kilka minut.";
 
-/** Cache prognoz: TTL 10 minut, maksymalnie 50 wpisów (najstarsze usuwane pierwsze). */
+/** Cache prognoz: świeży 10 minut, użyteczny (stale) do 60 minut, maks. 50 wpisów. */
 const CACHE_TTL_MS = 600000;
+const CACHE_STALE_MS = 3600000;
+/** Globalny cooldown po HTTP 429 z Open-Meteo. */
+const COOLDOWN_MS = 300000;
 const CACHE_MAX_ENTRIES = 50;
-const cache = new Map<string, { expiresAt: number; value: RouteWeather }>();
+const cache = new Map<string, { storedAt: number; value: RouteWeather }>();
+let cooldownUntil = 0;
+const inflight = new Map<string, Promise<void>>();
 
 function cacheKey(input: { encodedPolyline: string; date: string; time: string; minutes: number }) {
   return `${input.date}|${input.time}|${Math.round(input.minutes)}|${input.encodedPolyline}`;
 }
 
-/** Tylko dla testów: czyści pamięć podręczną prognoz. */
+/** Tylko dla testów: czyści pamięć podręczną, cooldown i odświeżenia w tle. */
 export function __clearRouteWeatherCache() {
   cache.clear();
+  cooldownUntil = 0;
+  inflight.clear();
+}
+
+/** Tylko dla testów: czeka na zakończenie odświeżeń w tle. */
+export async function __routeWeatherPending() {
+  await Promise.all([...inflight.values()]);
+}
+
+function storeInCache(key: string, value: RouteWeather) {
+  if (!cache.has(key) && cache.size >= CACHE_MAX_ENTRIES) {
+    const oldest = cache.keys().next();
+    if (!oldest.done) cache.delete(oldest.value);
+  }
+  cache.set(key, { storedAt: Date.now(), value });
+}
+
+/** Uruchamia jedno odświeżenie w tle dla danego klucza (bez równoległych duplikatów). */
+function scheduleRefresh(
+  key: string,
+  input: { encodedPolyline: string; date: string; time: string; minutes: number },
+  decoded: Array<[number, number]>,
+  departure: Date,
+) {
+  if (inflight.has(key)) return;
+  const promise = (async () => {
+    try {
+      const { value, cacheable } = await computeRouteWeather(input, decoded, departure);
+      if (cacheable) storeInCache(key, value);
+    } catch {
+      // Zachowujemy starą, poprawną prognozę.
+    } finally {
+      inflight.delete(key);
+    }
+  })();
+  promise.catch(() => {});
+  inflight.set(key, promise);
 }
 
 type HourlyBlock = Record<string, Array<number | null> | string[] | undefined>;
@@ -129,9 +174,32 @@ export async function fetchRouteWeather(input: {
 
   const key = cacheKey(input);
   const cached = cache.get(key);
-  if (cached && cached.expiresAt > Date.now()) return cached.value;
-  if (cached) cache.delete(key);
+  const now = Date.now();
+  const age = cached ? now - cached.storedAt : Infinity;
+  if (cached && age <= CACHE_TTL_MS) return cached.value;
+  const usableStale = cached && age <= CACHE_STALE_MS ? cached : null;
+  const cooling = cooldownUntil > now;
 
+  if (usableStale) {
+    if (!cooling) scheduleRefresh(key, input, decoded, departure);
+    return {
+      points: usableStale.value.points,
+      notice: cooling ? RATE_LIMIT_STALE_NOTICE : STALE_NOTICE,
+    };
+  }
+  if (cached) cache.delete(key);
+  if (cooling) return { points: [], notice: RATE_LIMIT_NOTICE };
+
+  const { value, cacheable } = await computeRouteWeather(input, decoded, departure);
+  if (cacheable) storeInCache(key, value);
+  return value;
+}
+
+async function computeRouteWeather(
+  input: { encodedPolyline: string; date: string; time: string; minutes: number },
+  decoded: Array<[number, number]>,
+  departure: Date,
+): Promise<{ value: RouteWeather; cacheable: boolean }> {
   const samples = pickAlong(decoded, Math.min(5, Math.max(2, decoded.length)));
   const results: RouteWeatherPoint[] = [];
   let notice: string | null = null;
@@ -153,6 +221,7 @@ export async function fetchRouteWeather(input: {
       blocks = list.map((entry) => entry?.hourly ?? {});
     } else {
       cacheable = false;
+      if (res.status === 429) cooldownUntil = Date.now() + COOLDOWN_MS;
       notice =
         res.status === 429
           ? RATE_LIMIT_NOTICE
@@ -215,12 +284,5 @@ export async function fetchRouteWeather(input: {
   });
 
   const value: RouteWeather = { points: results.filter(Boolean), notice };
-  if (cacheable) {
-    if (cache.size >= CACHE_MAX_ENTRIES) {
-      const oldest = cache.keys().next();
-      if (!oldest.done) cache.delete(oldest.value);
-    }
-    cache.set(key, { expiresAt: Date.now() + CACHE_TTL_MS, value });
-  }
-  return value;
+  return { value: cacheable ? value : { points: [], notice }, cacheable };
 }
