@@ -50,8 +50,11 @@ describe("fetchRouteWeather", () => {
     expect(url).toContain("timezone=UTC");
     expect(url).toContain("precipitation_probability");
     expect(res.notice).toBeNull();
-    expect(res.points[0]!.temperature).toBe(24); // start 11:00 lokalnie = 09:00 UTC → indeks 0
-    expect(res.points[res.points.length - 1]!.temperature).not.toBeNull();
+    // punkt 0 czyta blok 0 (offset 0) o 09:00 UTC, ostatni punkt blok 2 (offset 2) o 12:00 UTC
+    expect(res.points[0]!.temperature).toBe(15);
+    expect(res.points[0]!.cloudCover).toBe(50);
+    expect(res.points[res.points.length - 1]!.cloudCover).toBe(52);
+    expect(res.points[res.points.length - 1]!.temperature).toBe(20);
   });
 
   it("cache hit, a po wygaśnięciu TTL pobiera ponownie", async () => {
