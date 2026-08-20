@@ -99,6 +99,14 @@ const RATE_LIMIT_NOTICE = "Serwis pogodowy jest chwilowo obciążony. Spróbuj p
 const RATE_LIMIT_STALE_NOTICE =
   "Serwis pogodowy jest chwilowo obciążony. Wyświetlam ostatnią dostępną prognozę.";
 const STALE_NOTICE = "Wyświetlam ostatnią dostępną prognozę. Odświeżenie może potrwać kilka minut.";
+const BOTH_FAILED_NOTICE = "Nie udało się pobrać prognozy. Spróbuj ponownie za kilka minut.";
+
+/** Limit czasu jednego żądania do dostawcy prognozy. */
+const REQUEST_TIMEOUT_MS = 8000;
+/** Maksymalna liczba równoległych żądań do Visual Crossing. */
+const VC_CONCURRENCY = 2;
+/** Tolerancja dopasowania godziny prognozy do czasu punktu trasy. */
+const MATCH_TOLERANCE_MS = 3600000;
 
 /** Cache prognoz: świeży 10 minut, użyteczny (stale) do 60 minut, maks. 50 wpisów. */
 const CACHE_TTL_MS = 600000;
@@ -157,6 +165,16 @@ function scheduleRefresh(
 }
 
 type HourlyBlock = Record<string, Array<number | null> | string[] | undefined>;
+
+async function fetchWithTimeout(url: string): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    return await fetch(url, { signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 export async function fetchRouteWeather(input: {
   encodedPolyline: string;
