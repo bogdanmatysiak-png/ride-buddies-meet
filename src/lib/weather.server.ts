@@ -99,6 +99,14 @@ const RATE_LIMIT_NOTICE = "Serwis pogodowy jest chwilowo obciążony. Spróbuj p
 const RATE_LIMIT_STALE_NOTICE =
   "Serwis pogodowy jest chwilowo obciążony. Wyświetlam ostatnią dostępną prognozę.";
 const STALE_NOTICE = "Wyświetlam ostatnią dostępną prognozę. Odświeżenie może potrwać kilka minut.";
+const BOTH_FAILED_NOTICE = "Nie udało się pobrać prognozy. Spróbuj ponownie za kilka minut.";
+
+/** Limit czasu jednego żądania do dostawcy prognozy. */
+const REQUEST_TIMEOUT_MS = 8000;
+/** Maksymalna liczba równoległych żądań do Visual Crossing. */
+const VC_CONCURRENCY = 2;
+/** Tolerancja dopasowania godziny prognozy do czasu punktu trasy. */
+const MATCH_TOLERANCE_MS = 3600000;
 
 /** Cache prognoz: świeży 10 minut, użyteczny (stale) do 60 minut, maks. 50 wpisów. */
 const CACHE_TTL_MS = 600000;
@@ -158,6 +166,16 @@ function scheduleRefresh(
 
 type HourlyBlock = Record<string, Array<number | null> | string[] | undefined>;
 
+async function fetchWithTimeout(url: string): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    return await fetch(url, { signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function fetchRouteWeather(input: {
   encodedPolyline: string;
   date: string;
@@ -188,101 +206,296 @@ export async function fetchRouteWeather(input: {
     };
   }
   if (cached) cache.delete(key);
-  if (cooling) return { points: [], notice: RATE_LIMIT_NOTICE };
+  if (cooling) {
+    // W czasie cooldownu pomijamy Open-Meteo i próbujemy zapasowego dostawcy.
+    if (!process.env["VISUAL_CROSSING_API_KEY"]) {
+      return { points: [], notice: RATE_LIMIT_NOTICE };
+    }
+    const cooled = await computeRouteWeather(input, decoded, departure, { skipOpenMeteo: true });
+    if (cooled.cacheable) storeInCache(key, cooled.value);
+    return cooled.value;
+  }
 
   const { value, cacheable } = await computeRouteWeather(input, decoded, departure);
   if (cacheable) storeInCache(key, value);
   return value;
 }
 
-async function computeRouteWeather(
-  input: { encodedPolyline: string; date: string; time: string; minutes: number },
-  decoded: Array<[number, number]>,
-  departure: Date,
-): Promise<{ value: RouteWeather; cacheable: boolean }> {
-  const samples = pickAlong(decoded, Math.min(5, Math.max(2, decoded.length)));
-  const results: RouteWeatherPoint[] = [];
-  let notice: string | null = null;
-  let cacheable = true;
+type Sample = { point: [number, number]; fraction: number };
 
-  // Jedno zbiorcze zapytanie dla wszystkich punktów trasy (listy latitude/longitude w tej samej kolejności).
+type ProviderResult = {
+  points: RouteWeatherPoint[];
+  /** true, gdy wszystkie punkty mają dopasowane i kompletne dane. */
+  complete: boolean;
+  notice: string | null;
+};
+
+function pointAt(
+  sample: Sample,
+  departure: Date,
+  minutes: number,
+): { at: Date; label: string } {
+  return {
+    at: new Date(departure.getTime() + sample.fraction * minutes * 60000),
+    label:
+      LABELS[Math.round(sample.fraction * 4)] ?? `${Math.round(sample.fraction * 100)}%`,
+  };
+}
+
+function emptyPoint(sample: Sample, departure: Date, minutes: number): RouteWeatherPoint {
+  const { at, label } = pointAt(sample, departure, minutes);
+  return {
+    label,
+    lat: sample.point[0],
+    lng: sample.point[1],
+    at: at.toISOString(),
+    temperature: null,
+    cloudCover: null,
+    windSpeed: null,
+    windGusts: null,
+    precipitation: null,
+    precipitationChance: null,
+  };
+}
+
+/** Indeks najbliższej godziny prognozy (tolerancja 1 h) albo -1. */
+function nearestIndex(timestamps: number[], target: number): number {
+  let best = -1;
+  let bestDiff = Infinity;
+  for (let i = 0; i < timestamps.length; i++) {
+    const ts = timestamps[i]!;
+    const diff = Math.abs(ts - target);
+    if (!Number.isNaN(ts) && diff < bestDiff) {
+      bestDiff = diff;
+      best = i;
+    }
+  }
+  return best >= 0 && bestDiff <= MATCH_TOLERANCE_MS ? best : -1;
+}
+
+type OpenMeteoOutcome =
+  | { ok: true; blocks: HourlyBlock[] }
+  | { ok: false; rateLimited: boolean; notice: string };
+
+async function fetchOpenMeteo(samples: Sample[]): Promise<OpenMeteoOutcome> {
   const url =
     `https://api.open-meteo.com/v1/forecast?latitude=${samples.map((s) => s.point[0].toFixed(4)).join(",")}` +
     `&longitude=${samples.map((s) => s.point[1].toFixed(4)).join(",")}` +
     `&hourly=temperature_2m,cloud_cover,wind_speed_10m,wind_gusts_10m,precipitation,precipitation_probability` +
     `&forecast_days=16&timezone=UTC`;
-
-  let blocks: HourlyBlock[] = [];
   try {
-    const res = await fetch(url);
-    if (res.ok) {
-      const json = (await res.json()) as { hourly?: HourlyBlock } | Array<{ hourly?: HourlyBlock }>;
-      const list = Array.isArray(json) ? json : [json];
-      blocks = list.map((entry) => entry?.hourly ?? {});
-    } else {
-      cacheable = false;
+    const res = await fetchWithTimeout(url);
+    if (!res.ok) {
       if (res.status === 429) cooldownUntil = Date.now() + COOLDOWN_MS;
-      notice =
-        res.status === 429
-          ? RATE_LIMIT_NOTICE
-          : `Serwis pogodowy odpowiedział błędem (${res.status})`;
+      return {
+        ok: false,
+        rateLimited: res.status === 429,
+        notice:
+          res.status === 429
+            ? RATE_LIMIT_NOTICE
+            : `Serwis pogodowy odpowiedział błędem (${res.status})`,
+      };
     }
+    const json = (await res.json()) as { hourly?: HourlyBlock } | Array<{ hourly?: HourlyBlock }>;
+    const list = Array.isArray(json) ? json : [json];
+    return { ok: true, blocks: list.map((entry) => entry?.hourly ?? {}) };
   } catch {
-    cacheable = false;
-    notice = "Serwis pogodowy chwilowo niedostępny";
+    return { ok: false, rateLimited: false, notice: "Serwis pogodowy chwilowo niedostępny" };
   }
+}
 
-  samples.forEach((sample, i) => {
-      const at = new Date(departure.getTime() + sample.fraction * input.minutes * 60000);
-      const hourly = blocks[i] ?? blocks[0] ?? {};
-      const times = (hourly["time"] as string[] | undefined) ?? [];
-      if (times.length === 0) {
-        notice = notice ?? "Serwis pogodowy nie zwrócił danych godzinowych";
-      }
-      // Dopasowanie do najbliższej pełnej godziny prognozy (czasy punktów trasy nie są pełnymi godzinami).
-      let idx = times.indexOf(hourKey(at));
-      if (idx < 0 && times.length > 0) {
-        const target = at.getTime();
-        let best = -1;
-        let bestDiff = Infinity;
-        for (let t = 0; t < times.length; t++) {
-          const ts = Date.parse(`${times[t]}Z`);
-          const diff = Math.abs(ts - target);
-          if (!Number.isNaN(ts) && diff < bestDiff) {
-            bestDiff = diff;
-            best = t;
-          }
-        }
-        // Akceptuj tylko dopasowanie w granicy 1 godziny.
-        if (best >= 0 && bestDiff <= 3600000) idx = best;
-      }
-      if (idx < 0 && times.length > 0) {
+function mapOpenMeteo(
+  samples: Sample[],
+  blocks: HourlyBlock[],
+  departure: Date,
+  minutes: number,
+): ProviderResult {
+  let notice: string | null = null;
+  let complete = true;
+  const points = samples.map((sample, i) => {
+    const { at, label } = pointAt(sample, departure, minutes);
+    const hourly = blocks[i] ?? blocks[0] ?? {};
+    const times = (hourly["time"] as string[] | undefined) ?? [];
+    if (times.length === 0) {
+      complete = false;
+      notice = notice ?? "Serwis pogodowy nie zwrócił danych godzinowych";
+    }
+    let idx = times.indexOf(hourKey(at));
+    if (idx < 0 && times.length > 0) {
+      idx = nearestIndex(
+        times.map((t) => Date.parse(`${t}Z`)),
+        at.getTime(),
+      );
+      if (idx < 0) {
+        complete = false;
         notice = "Prognoza jest dostępna maksymalnie 16 dni w przód";
       }
-      const missing: string[] = [];
-      const val = (key: string) => {
-        if (idx < 0) return null;
-        const value = (hourly[key] as Array<number | null> | undefined)?.[idx];
-        if (value === undefined) missing.push(key);
-        return typeof value === "number" ? value : null;
+    }
+    const val = (key: string) => {
+      if (idx < 0) return null;
+      const value = (hourly[key] as Array<number | null> | undefined)?.[idx];
+      if (typeof value !== "number") {
+        complete = false;
+        notice =
+          notice ?? "Serwis pogodowy zwrócił niepełne dane — część wartości może być nieznana";
+        return null;
+      }
+      return value;
+    };
+    return {
+      label,
+      lat: sample.point[0],
+      lng: sample.point[1],
+      at: at.toISOString(),
+      temperature: val("temperature_2m"),
+      cloudCover: val("cloud_cover"),
+      windSpeed: val("wind_speed_10m"),
+      windGusts: val("wind_gusts_10m"),
+      precipitation: val("precipitation"),
+      precipitationChance: val("precipitation_probability"),
+    } satisfies RouteWeatherPoint;
+  });
+  return { points, complete, notice };
+}
+
+/** Lokalna data (Europe/Warsaw) w formacie YYYY-MM-DD. */
+function localDate(ts: number): string {
+  const d = new Date(ts + tzOffsetMs(ts));
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
+}
+
+type VcHour = {
+  datetimeEpoch?: number;
+  temp?: number | null;
+  cloudcover?: number | null;
+  windspeed?: number | null;
+  windgust?: number | null;
+  precip?: number | null;
+  precipprob?: number | null;
+};
+
+/** Uruchamia zadania z ograniczoną równoległością. */
+async function mapWithLimit<T, R>(
+  items: T[],
+  limit: number,
+  task: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const out = new Array<R>(items.length);
+  let cursor = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (cursor < items.length) {
+      const index = cursor++;
+      out[index] = await task(items[index]!, index);
+    }
+  });
+  await Promise.all(workers);
+  return out;
+}
+
+/** Zapasowy dostawca prognozy (Timeline API, jednostki metryczne). */
+async function fetchVisualCrossing(
+  samples: Sample[],
+  departure: Date,
+  minutes: number,
+): Promise<ProviderResult | null> {
+  const key = process.env["VISUAL_CROSSING_API_KEY"];
+  if (!key) return null;
+
+  let complete = true;
+  let notice: string | null = null;
+
+  const points = await mapWithLimit(samples, VC_CONCURRENCY, async (sample) => {
+    const { at, label } = pointAt(sample, departure, minutes);
+    const day = localDate(at.getTime());
+    const url =
+      `https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/` +
+      `${sample.point[0].toFixed(4)},${sample.point[1].toFixed(4)}/${day}/${day}` +
+      `?unitGroup=metric&include=hours&contentType=json` +
+      `&elements=datetimeEpoch,temp,cloudcover,windspeed,windgust,precip,precipprob` +
+      `&key=${encodeURIComponent(key)}`;
+    try {
+      const res = await fetchWithTimeout(url);
+      if (!res.ok) {
+        complete = false;
+        return emptyPoint(sample, departure, minutes);
+      }
+      const json = (await res.json()) as { days?: Array<{ hours?: VcHour[] }> };
+      const hours = (json.days ?? []).flatMap((d) => d.hours ?? []);
+      const idx = nearestIndex(
+        hours.map((h) => (typeof h.datetimeEpoch === "number" ? h.datetimeEpoch * 1000 : NaN)),
+        at.getTime(),
+      );
+      if (idx < 0) {
+        complete = false;
+        return emptyPoint(sample, departure, minutes);
+      }
+      const hour = hours[idx]!;
+      const num = (value: number | null | undefined) => {
+        if (typeof value !== "number") {
+          complete = false;
+          return null;
+        }
+        return value;
       };
-      results[i] = {
-        label: LABELS[Math.round(sample.fraction * 4)] ?? `${Math.round(sample.fraction * 100)}%`,
+      return {
+        label,
         lat: sample.point[0],
         lng: sample.point[1],
         at: at.toISOString(),
-        temperature: val("temperature_2m"),
-        cloudCover: val("cloud_cover"),
-        windSpeed: val("wind_speed_10m"),
-        windGusts: val("wind_gusts_10m"),
-        precipitation: val("precipitation"),
-        precipitationChance: val("precipitation_probability"),
-      };
-      if (idx >= 0 && missing.length > 0) {
-        notice = notice ?? "Serwis pogodowy zwrócił niepełne dane — część wartości może być nieznana";
-      }
+        temperature: num(hour.temp),
+        cloudCover: num(hour.cloudcover),
+        windSpeed: num(hour.windspeed),
+        windGusts: num(hour.windgust),
+        precipitation: num(hour.precip),
+        precipitationChance: num(hour.precipprob),
+      } satisfies RouteWeatherPoint;
+    } catch {
+      complete = false;
+      return emptyPoint(sample, departure, minutes);
+    }
   });
 
-  const value: RouteWeather = { points: results.filter(Boolean), notice };
-  return { value: cacheable ? value : { points: [], notice }, cacheable };
+  if (!complete) notice = BOTH_FAILED_NOTICE;
+  return { points, complete, notice };
+}
+
+async function computeRouteWeather(
+  input: { encodedPolyline: string; date: string; time: string; minutes: number },
+  decoded: Array<[number, number]>,
+  departure: Date,
+  options: { skipOpenMeteo?: boolean } = {},
+): Promise<{ value: RouteWeather; cacheable: boolean }> {
+  const samples = pickAlong(decoded, Math.min(5, Math.max(2, decoded.length)));
+
+  let primary: ProviderResult | null = null;
+  let primaryNotice: string | null = null;
+
+  if (!options.skipOpenMeteo) {
+    const outcome = await fetchOpenMeteo(samples);
+    if (outcome.ok) {
+      primary = mapOpenMeteo(samples, outcome.blocks, departure, input.minutes);
+      if (primary.complete) return { value: { points: primary.points, notice: null }, cacheable: true };
+      primaryNotice = primary.notice;
+    } else {
+      primaryNotice = outcome.notice;
+    }
+  } else {
+    primaryNotice = RATE_LIMIT_NOTICE;
+  }
+
+  // Fallback: Visual Crossing (klucz wyłącznie serwerowy).
+  const backup = await fetchVisualCrossing(samples, departure, input.minutes);
+  if (backup?.complete) {
+    return { value: { points: backup.points, notice: null }, cacheable: true };
+  }
+  if (backup) {
+    return { value: { points: [], notice: BOTH_FAILED_NOTICE }, cacheable: false };
+  }
+
+  // Brak zapasowego dostawcy — zachowaj dotychczasowe zachowanie Open-Meteo.
+  if (primary && primary.points.some((p) => p.temperature !== null)) {
+    return { value: { points: primary.points, notice: primary.notice }, cacheable: false };
+  }
+  return { value: { points: [], notice: primaryNotice ?? BOTH_FAILED_NOTICE }, cacheable: false };
 }
