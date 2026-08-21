@@ -164,8 +164,14 @@ function RootComponent() {
         </header>
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
         <Outlet />
-        <footer className="mx-auto max-w-3xl px-4 py-10 text-xs text-muted-foreground">
-          Motor Trip — jeździmy razem, wracamy wszyscy. Kask i ubezpieczenie po twojej stronie.
+        <footer className="mx-auto flex max-w-3xl flex-col items-center justify-between gap-3 px-4 py-10 text-xs text-muted-foreground sm:flex-row">
+          <span>Motor Trip — jeździmy razem, wracamy wszyscy. Kask i ubezpieczenie po twojej stronie.</span>
+          <Link
+            to="/polityka-prywatnosci"
+            className="text-muted-foreground transition-colors hover:text-primary"
+          >
+            Polityka prywatności
+          </Link>
         </footer>
       </div>
       <Toaster />
