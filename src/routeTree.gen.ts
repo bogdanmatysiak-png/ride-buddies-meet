@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as PolitykaPrywatnosciRouteImport } from './routes/polityka-prywatnosci'
 import { Route as RankingRouteImport } from './routes/ranking'
 import { Route as UsunKontoRouteImport } from './routes/usun-konto'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
@@ -41,6 +42,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PolitykaPrywatnosciRoute = PolitykaPrywatnosciRouteImport.update({
+  id: '/polityka-prywatnosci',
+  path: '/polityka-prywatnosci',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RankingRoute = RankingRouteImport.update({
@@ -132,6 +138,7 @@ const LovableEmailTransactionalPreviewRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/polityka-prywatnosci': typeof PolitykaPrywatnosciRoute
   '/ranking': typeof RankingRoute
   '/usun-konto': typeof UsunKontoRoute
   '/admin': typeof AuthenticatedAdminRoute
@@ -152,6 +159,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/polityka-prywatnosci': typeof PolitykaPrywatnosciRoute
   '/ranking': typeof RankingRoute
   '/usun-konto': typeof UsunKontoRoute
   '/admin': typeof AuthenticatedAdminRoute
@@ -174,6 +182,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/polityka-prywatnosci': typeof PolitykaPrywatnosciRoute
   '/ranking': typeof RankingRoute
   '/usun-konto': typeof UsunKontoRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
@@ -196,6 +205,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/polityka-prywatnosci'
     | '/ranking'
     | '/usun-konto'
     | '/admin'
@@ -216,6 +226,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/polityka-prywatnosci'
     | '/ranking'
     | '/usun-konto'
     | '/admin'
@@ -237,6 +248,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/polityka-prywatnosci'
     | '/ranking'
     | '/usun-konto'
     | '/_authenticated/admin'
@@ -259,6 +271,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  PolitykaPrywatnosciRoute: typeof PolitykaPrywatnosciRoute
   RankingRoute: typeof RankingRoute
   UsunKontoRoute: typeof UsunKontoRoute
   MotocyklistaIdRoute: typeof MotocyklistaIdRoute
@@ -289,6 +302,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/polityka-prywatnosci': {
+      id: '/polityka-prywatnosci'
+      path: '/polityka-prywatnosci'
+      fullPath: '/polityka-prywatnosci'
+      preLoaderRoute: typeof PolitykaPrywatnosciRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/ranking': {
@@ -437,6 +457,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  PolitykaPrywatnosciRoute: PolitykaPrywatnosciRoute,
   RankingRoute: RankingRoute,
   UsunKontoRoute: UsunKontoRoute,
   MotocyklistaIdRoute: MotocyklistaIdRoute,
