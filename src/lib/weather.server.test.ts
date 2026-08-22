@@ -167,7 +167,7 @@ describe("fetchRouteWeather", () => {
   });
 
   it("ogranicza zakres dat do minimum dla krótkiej trasy", async () => {
-    const fetchMock = vi.fn(async () => okResponse([block(0), block(0), block(0)]));
+    const fetchMock = vi.fn(async (_url: string) => okResponse([block(0), block(0), block(0)]));
     vi.stubGlobal("fetch", fetchMock);
 
     await fetchRouteWeather(input); // 11:00 lokalnie = 09:00 UTC, 60 min trasy
@@ -178,7 +178,7 @@ describe("fetchRouteWeather", () => {
   });
 
   it("trasa przez północ ustawia zakres dwóch dat", async () => {
-    const fetchMock = vi.fn(async () => okResponse([block(0), block(0), block(0)]));
+    const fetchMock = vi.fn(async (_url: string) => okResponse([block(0), block(0), block(0)]));
     vi.stubGlobal("fetch", fetchMock);
 
     await fetchRouteWeather({ ...input, time: "23:00", minutes: 90 });
