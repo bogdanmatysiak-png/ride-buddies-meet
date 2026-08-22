@@ -268,4 +268,66 @@ describe("fallback Visual Crossing", () => {
     expect(res.points).toEqual([]);
     expect(res.notice).toBe("Nie udało się pobrać prognozy. Spróbuj ponownie za kilka minut.");
   });
+
+  it("429 z Visual Crossing przerywa kolejne żądania i włącza 10-minutowy cooldown", async () => {
+    const logs: string[] = [];
+    vi.spyOn(console, "log").mockImplementation((...a: unknown[]) => logs.push(String(a)));
+    const fetchMock = vi.fn(async (url: string) =>
+      String(url).includes("open-meteo")
+        ? ({ ok: false, status: 500, json: async () => ({}) } as unknown as Response)
+        : ({ ok: false, status: 429, json: async () => ({}) } as unknown as Response),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await fetchRouteWeather(input);
+    const vcCalls = fetchMock.mock.calls.filter((c) => String(c[0]).includes("visualcrossing"));
+    expect(vcCalls.length).toBe(1); // pierwsze 429 blokuje pozostałe punkty
+    expect(res.points).toEqual([]);
+    expect(logs.join("\n")).toContain("visual-crossing-rate-limit");
+    expect(logs.join("\n")).toContain('cooldownMinutes\\":10');
+    expect(logs.join("\n")).not.toContain(KEY);
+    expect(JSON.stringify(res)).not.toContain(KEY);
+
+    // Podczas cooldownu nie pytamy Visual Crossing.
+    fetchMock.mockClear();
+    await fetchRouteWeather({ ...input, minutes: 120 });
+    expect(fetchMock.mock.calls.some((c) => String(c[0]).includes("visualcrossing"))).toBe(false);
+
+    // Po cooldownie dostawca może być wywołany ponownie.
+    vi.setSystemTime(new Date("2026-08-20T07:11:00Z"));
+    fetchMock.mockClear();
+    await fetchRouteWeather({ ...input, minutes: 150 });
+    expect(fetchMock.mock.calls.some((c) => String(c[0]).includes("visualcrossing"))).toBe(true);
+  });
+
+  it("pusty wynik po 429 z Visual Crossing nie trafia do cache", async () => {
+    const fetchMock = vi.fn(async (url: string) =>
+      String(url).includes("open-meteo")
+        ? ({ ok: false, status: 500, json: async () => ({}) } as unknown as Response)
+        : ({ ok: false, status: 429, json: async () => ({}) } as unknown as Response),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await fetchRouteWeather(input);
+    fetchMock.mockClear();
+    const second = await fetchRouteWeather(input);
+    expect(second.points).toEqual([]);
+    expect(fetchMock.mock.calls.some((c) => String(c[0]).includes("open-meteo"))).toBe(true);
+  });
+
+  it("fallback pobiera maksymalnie 3 punkty trasy", async () => {
+    const fetchMock = vi.fn(async (url: string) =>
+      String(url).includes("open-meteo")
+        ? ({ ok: false, status: 500, json: async () => ({}) } as unknown as Response)
+        : vcResponse(20),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await fetchRouteWeather(input);
+    const vcCalls = fetchMock.mock.calls.filter((c) => String(c[0]).includes("visualcrossing"));
+    expect(vcCalls.length).toBeLessThanOrEqual(3);
+    expect(res.notice).toBeNull();
+    expect(res.points.every((p) => p.temperature !== null)).toBe(true);
+  });
 });
+
