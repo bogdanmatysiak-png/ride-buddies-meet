@@ -38,6 +38,30 @@ describe("fetchRouteWeather", () => {
     vi.restoreAllMocks();
   });
 
+  it("prezentuje dokładnie 3 punkty: Początek / Połowa trasy / Cel", async () => {
+    const fetchMock = vi.fn(async (_url: string) => okResponse([block(0), block(1), block(2)]));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await fetchRouteWeather(input);
+    expect(res.points.map((p) => p.label)).toEqual(["Początek", "Połowa trasy", "Cel"]);
+    // Open-Meteo dostaje dokładnie te same 3 współrzędne.
+    const url = String(fetchMock.mock.calls[0]![0]);
+    expect(url.match(/latitude=([^&]+)/)![1]!.split(",")).toHaveLength(3);
+    expect(url.match(/longitude=([^&]+)/)![1]!.split(",")).toHaveLength(3);
+    expect(res.points[0]!.lat).toBeCloseTo(Number(url.match(/latitude=([^&,]+)/)![1]), 3);
+  });
+
+  it("krótka trasa: mniej unikalnych punktów, bez duplikatów", async () => {
+    const fetchMock = vi.fn(async (_url: string) => okResponse([block(0), block(1)]));
+    vi.stubGlobal("fetch", fetchMock);
+
+    // Polilinia z dwoma punktami.
+    const res = await fetchRouteWeather({ ...input, encodedPolyline: "_p~iF~ps|U_ulLnnqC" });
+    expect(res.points.map((p) => p.label)).toEqual(["Początek", "Cel"]);
+    const key = (p: { lat: number; lng: number }) => `${p.lat},${p.lng}`;
+    expect(new Set(res.points.map(key)).size).toBe(res.points.length);
+  });
+
   it("wykonuje jedno zbiorcze zapytanie i mapuje odpowiedzi po kolei", async () => {
     const fetchMock = vi.fn(async (_url: string) => okResponse([block(0), block(1), block(2)]));
     vi.stubGlobal("fetch", fetchMock);

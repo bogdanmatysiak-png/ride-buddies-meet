@@ -32,23 +32,45 @@ function haversine(a: [number, number], b: [number, number]): number {
   return 6371000 * 2 * Math.asin(Math.sqrt(h));
 }
 
-/** Wybiera punkty co równy dystans (0%, 25%, 50%, 75%, 100%). */
-function pickAlong(points: Array<[number, number]>, count: number) {
+/**
+ * Wybiera dokładnie 3 reprezentatywne punkty trasy: początek, punkt najbliższy
+ * połowie dystansu i cel. Przy bardzo krótkiej/nietypowej geometrii zwraca
+ * mniejszą liczbę rzeczywiście różnych punktów (bez duplikatów).
+ */
+function pickRepresentative(points: Array<[number, number]>): Sample[] {
+  if (points.length === 0) return [];
   const cum: number[] = [0];
   for (let i = 1; i < points.length; i++) {
     cum.push(cum[i - 1]! + haversine(points[i - 1]!, points[i]!));
   }
-  const total = cum[cum.length - 1] ?? 0;
-  const out: Array<{ point: [number, number]; fraction: number }> = [];
-  for (let i = 0; i < count; i++) {
-    const fraction = count === 1 ? 0 : i / (count - 1);
-    const target = total * fraction;
-    let idx = cum.findIndex((d) => d >= target);
-    if (idx < 0) idx = points.length - 1;
-    out.push({ point: points[idx]!, fraction });
+  const last = points.length - 1;
+  const total = cum[last] ?? 0;
+  // Punkt najbliższy połowie dystansu (a przy zerowym dystansie — środek geometrii).
+  let midIdx = Math.floor(last / 2);
+  if (total > 0) {
+    let bestDiff = Infinity;
+    for (let i = 0; i <= last; i++) {
+      const diff = Math.abs(cum[i]! - total / 2);
+      if (diff < bestDiff) {
+        bestDiff = diff;
+        midIdx = i;
+      }
+    }
   }
-  return out;
+  const indexes = [...new Set([0, midIdx, last])].sort((a, b) => a - b);
+  const labels =
+    indexes.length === 3
+      ? ["Początek", "Połowa trasy", "Cel"]
+      : indexes.length === 2
+        ? ["Początek", "Cel"]
+        : ["Początek"];
+  return indexes.map((idx, i) => ({
+    point: points[idx]!,
+    fraction: total > 0 ? (cum[idx] ?? 0) / total : idx === 0 ? 0 : 1,
+    label: labels[i]!,
+  }));
 }
+
 
 function hourKey(date: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -93,7 +115,9 @@ function localToUtc(date: string, time: string): number {
   return ts;
 }
 
-const LABELS = ["Start", "25% trasy", "Połowa trasy", "75% trasy", "Cel"];
+/** Dokładnie 3 prezentowane punkty trasy. */
+const MAX_POINTS = 3;
+
 
 const RATE_LIMIT_NOTICE = "Serwis pogodowy jest chwilowo obciążony. Spróbuj ponownie za kilka minut.";
 const RATE_LIMIT_STALE_NOTICE =
@@ -235,7 +259,7 @@ export async function fetchRouteWeather(input: {
   return value;
 }
 
-type Sample = { point: [number, number]; fraction: number };
+type Sample = { point: [number, number]; fraction: number; label: string };
 
 type ProviderResult = {
   points: RouteWeatherPoint[];
@@ -251,10 +275,10 @@ function pointAt(
 ): { at: Date; label: string } {
   return {
     at: new Date(departure.getTime() + sample.fraction * minutes * 60000),
-    label:
-      LABELS[Math.round(sample.fraction * 4)] ?? `${Math.round(sample.fraction * 100)}%`,
+    label: sample.label,
   };
 }
+
 
 function emptyPoint(sample: Sample, departure: Date, minutes: number): RouteWeatherPoint {
   const { at, label } = pointAt(sample, departure, minutes);
@@ -346,7 +370,7 @@ async function fetchOpenMeteo(
         status: res.status,
         timeout: false,
         rejectReason: res.status === 429 ? "rate-limited" : "http-error",
-        samples: samples.length,
+        selectedPoints: samples.length,
       });
       return {
         ok: false,
@@ -365,7 +389,7 @@ async function fetchOpenMeteo(
       timeout: false,
       blocks: blocks.length,
       hours: blocks.map((b) => ((b["time"] as string[] | undefined) ?? []).length),
-      samples: samples.length,
+      selectedPoints: samples.length,
       rejectReason: null,
     });
     return { ok: true, blocks };
@@ -375,7 +399,7 @@ async function fetchOpenMeteo(
       status: null,
       timeout,
       rejectReason: timeout ? "timeout" : "network-error",
-      samples: samples.length,
+      selectedPoints: samples.length,
     });
     return { ok: false, rateLimited: false, notice: "Serwis pogodowy chwilowo niedostępny" };
   }
@@ -495,16 +519,11 @@ async function mapWithLimit<T, R>(
   return out;
 }
 
-/** Indeksy reprezentatywnych punktów (start, środek, cel) pobieranych z fallbacku. */
+/** Indeksy punktów pobieranych z fallbacku (te same, co prezentowane; maks. 3). */
 function representativeIndexes(count: number, max = VC_MAX_POINTS): number[] {
-  if (count <= max) return samplesRange(count);
-  const picks = new Set<number>([0, Math.floor((count - 1) / 2), count - 1]);
-  return [...picks].sort((a, b) => a - b);
+  return Array.from({ length: Math.min(count, max) }, (_, i) => i);
 }
 
-function samplesRange(count: number): number[] {
-  return Array.from({ length: count }, (_, i) => i);
-}
 
 /** Zapasowy dostawca prognozy (Timeline API, jednostki metryczne). */
 async function fetchVisualCrossing(
@@ -517,7 +536,7 @@ async function fetchVisualCrossing(
   const cooling = vcCooldownUntil > now;
   audit("visual-crossing-start", {
     hasVisualCrossingKey: !!key,
-    routePoints: samples.length,
+    selectedPoints: samples.length,
     skippedByCooldown: cooling,
   });
   if (!key) return null;
@@ -674,7 +693,7 @@ async function fetchVisualCrossing(
   audit("visual-crossing", {
     complete,
     fullCoverage,
-    routePoints: points.length,
+    selectedPoints: points.length,
     fetchedPoints: fetched.size,
     requests,
     rateLimited,
@@ -698,12 +717,16 @@ async function computeRouteWeather(
   departure: Date,
   options: { skipOpenMeteo?: boolean } = {},
 ): Promise<{ value: RouteWeather; cacheable: boolean }> {
-  const samples = pickAlong(decoded, Math.min(5, Math.max(2, decoded.length)));
+  // Jedna wspólna lista punktów dla obu dostawców: Początek → Połowa trasy → Cel.
+  const samples = pickRepresentative(decoded).slice(0, MAX_POINTS);
   audit("start", {
     hasVisualCrossingKey: !!process.env["VISUAL_CROSSING_API_KEY"],
-    routePoints: samples.length,
+    routePoints: decoded.length,
+    selectedPoints: samples.length,
+    labels: samples.map((s) => s.label),
     skipOpenMeteo: !!options.skipOpenMeteo,
   });
+
 
   let primary: ProviderResult | null = null;
   let primaryNotice: string | null = null;
