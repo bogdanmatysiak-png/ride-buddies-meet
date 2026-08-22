@@ -132,8 +132,10 @@ function cacheKey(input: { encodedPolyline: string; date: string; time: string; 
 export function __clearRouteWeatherCache() {
   cache.clear();
   cooldownUntil = 0;
+  vcCooldownUntil = 0;
   inflight.clear();
 }
+
 
 /** Tylko dla testów: czeka na zakończenie odświeżeń w tle. */
 export async function __routeWeatherPending() {
