@@ -446,6 +446,17 @@ async function mapWithLimit<T, R>(
   return out;
 }
 
+/** Indeksy reprezentatywnych punktów (start, środek, cel) pobieranych z fallbacku. */
+function representativeIndexes(count: number, max = VC_MAX_POINTS): number[] {
+  if (count <= max) return samplesRange(count);
+  const picks = new Set<number>([0, Math.floor((count - 1) / 2), count - 1]);
+  return [...picks].sort((a, b) => a - b);
+}
+
+function samplesRange(count: number): number[] {
+  return Array.from({ length: count }, (_, i) => i);
+}
+
 /** Zapasowy dostawca prognozy (Timeline API, jednostki metryczne). */
 async function fetchVisualCrossing(
   samples: Sample[],
@@ -453,18 +464,52 @@ async function fetchVisualCrossing(
   minutes: number,
 ): Promise<ProviderResult | null> {
   const key = process.env["VISUAL_CROSSING_API_KEY"];
+  const now = Date.now();
+  const cooling = vcCooldownUntil > now;
   audit("visual-crossing-start", {
     hasVisualCrossingKey: !!key,
     routePoints: samples.length,
+    skippedByCooldown: cooling,
   });
   if (!key) return null;
+  if (cooling) {
+    audit("visual-crossing", {
+      complete: false,
+      requests: 0,
+      skippedByCooldown: true,
+      rejectReason: "cooldown",
+      cooldownRemainingMinutes: Math.ceil((vcCooldownUntil - now) / 60000),
+    });
+    return {
+      points: samples.map((s) => emptyPoint(s, departure, minutes)),
+      complete: false,
+      notice: BOTH_FAILED_NOTICE,
+    };
+  }
 
   let complete = true;
   let notice: string | null = null;
+  let rateLimited = false;
+  let requests = 0;
 
+  const wanted = representativeIndexes(samples.length);
+  const fetched = new Map<number, RouteWeatherPoint>();
 
-  const points = await mapWithLimit(samples, VC_CONCURRENCY, async (sample) => {
+  await mapWithLimit(wanted, VC_CONCURRENCY, async (sampleIndex) => {
+    const sample = samples[sampleIndex]!;
     const { at, label } = pointAt(sample, departure, minutes);
+    if (rateLimited) {
+      // Po 429 nie wykonujemy kolejnych żądań dla tej trasy.
+      complete = false;
+      audit("visual-crossing-point", {
+        label,
+        status: null,
+        timeout: false,
+        rejectReason: "rate-limited",
+        skippedByCooldown: true,
+      });
+      return;
+    }
     const day = localDate(at.getTime());
     const url =
       `https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/` +
@@ -473,16 +518,25 @@ async function fetchVisualCrossing(
       `&elements=datetimeEpoch,temp,cloudcover,windspeed,windgust,precip,precipprob` +
       `&key=${encodeURIComponent(key)}`;
     try {
+      requests++;
       const res = await fetchWithTimeout(url);
       if (!res.ok) {
         complete = false;
+        if (res.status === 429) {
+          rateLimited = true;
+          vcCooldownUntil = Date.now() + VC_COOLDOWN_MS;
+          audit("visual-crossing-rate-limit", {
+            cooldownMinutes: Math.round(VC_COOLDOWN_MS / 60000),
+            requests,
+          });
+        }
         audit("visual-crossing-point", {
           label,
           status: res.status,
           timeout: false,
-          rejectReason: "http-error",
+          rejectReason: res.status === 429 ? "rate-limited" : "http-error",
         });
-        return emptyPoint(sample, departure, minutes);
+        return;
       }
       const json = (await res.json()) as { days?: Array<{ hours?: VcHour[] }> };
       const days = json.days ?? [];
@@ -502,7 +556,7 @@ async function fetchVisualCrossing(
           rejectReason: "no-hour-match",
           missingFields: ["temp", "cloudcover", "windspeed", "windgust", "precip", "precipprob"],
         });
-        return emptyPoint(sample, departure, minutes);
+        return;
       }
       const hour = hours[idx]!;
       const missing: string[] = [];
@@ -526,6 +580,7 @@ async function fetchVisualCrossing(
         precipitation: num(hour.precip, "precip"),
         precipitationChance: num(hour.precipprob, "precipprob"),
       } satisfies RouteWeatherPoint;
+      fetched.set(sampleIndex, mapped);
       audit("visual-crossing-point", {
         label,
         status: res.status,
@@ -539,7 +594,6 @@ async function fetchVisualCrossing(
         missingFields: missing,
         rejectReason: missing.length > 0 ? "missing-fields" : null,
       });
-      return mapped;
     } catch (e) {
       complete = false;
       const timeout = e instanceof Error && e.name === "AbortError";
@@ -549,14 +603,53 @@ async function fetchVisualCrossing(
         timeout,
         rejectReason: timeout ? "timeout" : "network-error",
       });
-      return emptyPoint(sample, departure, minutes);
     }
   });
 
+  // Punkty nieobjęte zapytaniem uzupełniamy wartościami najbliższego pobranego punktu.
+  const points = samples.map((sample, i) => {
+    const own = fetched.get(i);
+    const base = own ?? nearestFetched(fetched, i);
+    if (!base) return emptyPoint(sample, departure, minutes);
+    const { at, label } = pointAt(sample, departure, minutes);
+    return {
+      ...base,
+      label,
+      lat: sample.point[0],
+      lng: sample.point[1],
+      at: at.toISOString(),
+    } satisfies RouteWeatherPoint;
+  });
+
   if (!complete) notice = BOTH_FAILED_NOTICE;
-  audit("visual-crossing", { complete, routePoints: points.length });
+  audit("visual-crossing", {
+    complete,
+    routePoints: points.length,
+    requests,
+    rateLimited,
+    skippedByCooldown: false,
+    rejectReason: rateLimited ? "rate-limited" : complete ? null : "incomplete",
+  });
   return { points, complete, notice };
 }
+
+/** Najbliższy (po indeksie) pobrany punkt prognozy. */
+function nearestFetched(
+  fetched: Map<number, RouteWeatherPoint>,
+  index: number,
+): RouteWeatherPoint | null {
+  let best: RouteWeatherPoint | null = null;
+  let bestDiff = Infinity;
+  for (const [i, point] of fetched) {
+    const diff = Math.abs(i - index);
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      best = point;
+    }
+  }
+  return best;
+}
+
 
 async function computeRouteWeather(
   input: { encodedPolyline: string; date: string; time: string; minutes: number },
