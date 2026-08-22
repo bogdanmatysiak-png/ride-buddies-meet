@@ -205,6 +205,7 @@ export async function fetchRouteWeather(input: {
 
   if (usableStale) {
     if (!cooling) scheduleRefresh(key, input, decoded, departure);
+    audit("decision", { decision: "stale-cache", cooling, ageMinutes: Math.round(age / 60000) });
     return {
       points: usableStale.value.points,
       notice: cooling ? RATE_LIMIT_STALE_NOTICE : STALE_NOTICE,
