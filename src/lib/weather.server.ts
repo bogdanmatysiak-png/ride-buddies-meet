@@ -551,13 +551,17 @@ async function fetchVisualCrossing(
       });
       return;
     }
-    const day = localDate(at.getTime());
+    // Minimalny zakres: godzina przed i po czasie punktu (Timeline API przyjmuje
+    // zakres ISO datetime w lokalnej strefie lokalizacji) — 3 godziny zamiast całej doby.
+    const from = localDateTime(at.getTime() - WINDOW_BUFFER_MS);
+    const to = localDateTime(at.getTime() + WINDOW_BUFFER_MS);
     const url =
       `https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/` +
-      `${sample.point[0].toFixed(4)},${sample.point[1].toFixed(4)}/${day}/${day}` +
+      `${sample.point[0].toFixed(4)},${sample.point[1].toFixed(4)}/${from}/${to}` +
       `?unitGroup=metric&include=hours&contentType=json` +
       `&elements=datetimeEpoch,temp,cloudcover,windspeed,windgust,precip,precipprob` +
       `&key=${encodeURIComponent(key)}`;
+
     try {
       requests++;
       const res = await fetchWithTimeout(url);
