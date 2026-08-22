@@ -284,7 +284,7 @@ describe("fallback Visual Crossing", () => {
     expect(vcCalls.length).toBe(1); // pierwsze 429 blokuje pozostałe punkty
     expect(res.points).toEqual([]);
     expect(logs.join("\n")).toContain("visual-crossing-rate-limit");
-    expect(logs.join("\n")).toContain('cooldownMinutes\\":10');
+    expect(logs.join("\n")).toContain('cooldownMinutes":10');
     expect(logs.join("\n")).not.toContain(KEY);
     expect(JSON.stringify(res)).not.toContain(KEY);
 
