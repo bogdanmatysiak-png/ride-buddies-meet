@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as PolitykaPrywatnosciRouteImport } from './routes/polityka-prywatnosci'
 import { Route as RankingRouteImport } from './routes/ranking'
+import { Route as StandardyBezpieczenstwaDzieciRouteImport } from './routes/standardy-bezpieczenstwa-dzieci'
 import { Route as UsunKontoRouteImport } from './routes/usun-konto'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedGrupyRouteImport } from './routes/_authenticated/grupy'
@@ -54,6 +55,12 @@ const RankingRoute = RankingRouteImport.update({
   path: '/ranking',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StandardyBezpieczenstwaDzieciRoute =
+  StandardyBezpieczenstwaDzieciRouteImport.update({
+    id: '/standardy-bezpieczenstwa-dzieci',
+    path: '/standardy-bezpieczenstwa-dzieci',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const UsunKontoRoute = UsunKontoRouteImport.update({
   id: '/usun-konto',
   path: '/usun-konto',
@@ -140,6 +147,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/polityka-prywatnosci': typeof PolitykaPrywatnosciRoute
   '/ranking': typeof RankingRoute
+  '/standardy-bezpieczenstwa-dzieci': typeof StandardyBezpieczenstwaDzieciRoute
   '/usun-konto': typeof UsunKontoRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/grupy': typeof AuthenticatedGrupyRoute
@@ -161,6 +169,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/polityka-prywatnosci': typeof PolitykaPrywatnosciRoute
   '/ranking': typeof RankingRoute
+  '/standardy-bezpieczenstwa-dzieci': typeof StandardyBezpieczenstwaDzieciRoute
   '/usun-konto': typeof UsunKontoRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/grupy': typeof AuthenticatedGrupyRoute
@@ -184,6 +193,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/polityka-prywatnosci': typeof PolitykaPrywatnosciRoute
   '/ranking': typeof RankingRoute
+  '/standardy-bezpieczenstwa-dzieci': typeof StandardyBezpieczenstwaDzieciRoute
   '/usun-konto': typeof UsunKontoRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/grupy': typeof AuthenticatedGrupyRoute
@@ -207,6 +217,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/polityka-prywatnosci'
     | '/ranking'
+    | '/standardy-bezpieczenstwa-dzieci'
     | '/usun-konto'
     | '/admin'
     | '/grupy'
@@ -228,6 +239,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/polityka-prywatnosci'
     | '/ranking'
+    | '/standardy-bezpieczenstwa-dzieci'
     | '/usun-konto'
     | '/admin'
     | '/grupy'
@@ -250,6 +262,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/polityka-prywatnosci'
     | '/ranking'
+    | '/standardy-bezpieczenstwa-dzieci'
     | '/usun-konto'
     | '/_authenticated/admin'
     | '/_authenticated/grupy'
@@ -273,6 +286,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   PolitykaPrywatnosciRoute: typeof PolitykaPrywatnosciRoute
   RankingRoute: typeof RankingRoute
+  StandardyBezpieczenstwaDzieciRoute: typeof StandardyBezpieczenstwaDzieciRoute
   UsunKontoRoute: typeof UsunKontoRoute
   MotocyklistaIdRoute: typeof MotocyklistaIdRoute
   WyprawaIdRoute: typeof WyprawaIdRoute
@@ -316,6 +330,13 @@ declare module '@tanstack/react-router' {
       path: '/ranking'
       fullPath: '/ranking'
       preLoaderRoute: typeof RankingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/standardy-bezpieczenstwa-dzieci': {
+      id: '/standardy-bezpieczenstwa-dzieci'
+      path: '/standardy-bezpieczenstwa-dzieci'
+      fullPath: '/standardy-bezpieczenstwa-dzieci'
+      preLoaderRoute: typeof StandardyBezpieczenstwaDzieciRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/usun-konto': {
@@ -459,6 +480,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   PolitykaPrywatnosciRoute: PolitykaPrywatnosciRoute,
   RankingRoute: RankingRoute,
+  StandardyBezpieczenstwaDzieciRoute: StandardyBezpieczenstwaDzieciRoute,
   UsunKontoRoute: UsunKontoRoute,
   MotocyklistaIdRoute: MotocyklistaIdRoute,
   WyprawaIdRoute: WyprawaIdRoute,
