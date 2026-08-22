@@ -166,6 +166,11 @@ function scheduleRefresh(
 
 type HourlyBlock = Record<string, Array<number | null> | string[] | undefined>;
 
+/** Tymczasowe logi diagnostyczne (bez kluczy, URL-i i danych użytkowników). */
+function audit(event: string, details: Record<string, unknown> = {}) {
+  console.log("[weather-audit]", JSON.stringify({ event, ...details }));
+}
+
 async function fetchWithTimeout(url: string): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
