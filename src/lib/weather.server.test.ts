@@ -165,7 +165,39 @@ describe("fetchRouteWeather", () => {
     await fetchRouteWeather(input);
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
+
+  it("ogranicza zakres dat do minimum dla krótkiej trasy", async () => {
+    const fetchMock = vi.fn(async () => okResponse([block(0), block(0), block(0)]));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await fetchRouteWeather(input); // 11:00 lokalnie = 09:00 UTC, 60 min trasy
+    const url = String(fetchMock.mock.calls[0]![0]);
+    expect(url).not.toContain("forecast_days");
+    expect(url).toContain("start_date=2026-08-22");
+    expect(url).toContain("end_date=2026-08-22");
+  });
+
+  it("trasa przez północ ustawia zakres dwóch dat", async () => {
+    const fetchMock = vi.fn(async () => okResponse([block(0), block(0), block(0)]));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await fetchRouteWeather({ ...input, time: "23:00", minutes: 90 });
+    const url = String(fetchMock.mock.calls[0]![0]);
+    expect(url).toContain("start_date=2026-08-22");
+    expect(url).toContain("end_date=2026-08-23");
+  });
+
+  it("dopasowuje godzinę w czasie letnim Europe/Warsaw (UTC+2)", async () => {
+    const fetchMock = vi.fn(async () => okResponse([block(0), block(0), block(0)]));
+    vi.stubGlobal("fetch", fetchMock);
+
+    // 11:00 czasu warszawskiego (DST) = 09:00 UTC → pierwsza godzina bloku (15°C).
+    const res = await fetchRouteWeather(input);
+    expect(res.points[0]!.at).toBe("2026-08-22T09:00:00.000Z");
+    expect(res.points[0]!.temperature).toBe(15);
+  });
 });
+
 
 describe("fallback Visual Crossing", () => {
   const KEY = "test-secret-key";
