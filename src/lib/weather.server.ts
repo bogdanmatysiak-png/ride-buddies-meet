@@ -1065,6 +1065,6 @@ async function computeRouteWeather(
 
   // Częściowe pokrycie: pokazujemy tylko punkty z realnymi danymi, bez cache.
   if (merged.size > 0) return finish(false, BOTH_FAILED_NOTICE);
-  return finish(false, primaryNotice ?? BOTH_FAILED_NOTICE);
+  return finish(false, tried.length > 1 ? BOTH_FAILED_NOTICE : (primaryNotice ?? BOTH_FAILED_NOTICE));
 }
 
