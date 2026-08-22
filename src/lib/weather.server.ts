@@ -292,6 +292,12 @@ async function fetchOpenMeteo(samples: Sample[]): Promise<OpenMeteoOutcome> {
     const res = await fetchWithTimeout(url);
     if (!res.ok) {
       if (res.status === 429) cooldownUntil = Date.now() + COOLDOWN_MS;
+      audit("open-meteo", {
+        status: res.status,
+        timeout: false,
+        rejectReason: res.status === 429 ? "rate-limited" : "http-error",
+        samples: samples.length,
+      });
       return {
         ok: false,
         rateLimited: res.status === 429,
@@ -303,8 +309,24 @@ async function fetchOpenMeteo(samples: Sample[]): Promise<OpenMeteoOutcome> {
     }
     const json = (await res.json()) as { hourly?: HourlyBlock } | Array<{ hourly?: HourlyBlock }>;
     const list = Array.isArray(json) ? json : [json];
-    return { ok: true, blocks: list.map((entry) => entry?.hourly ?? {}) };
-  } catch {
+    const blocks = list.map((entry) => entry?.hourly ?? {});
+    audit("open-meteo", {
+      status: res.status,
+      timeout: false,
+      blocks: blocks.length,
+      hours: blocks.map((b) => ((b["time"] as string[] | undefined) ?? []).length),
+      samples: samples.length,
+      rejectReason: null,
+    });
+    return { ok: true, blocks };
+  } catch (e) {
+    const timeout = e instanceof Error && e.name === "AbortError";
+    audit("open-meteo", {
+      status: null,
+      timeout,
+      rejectReason: timeout ? "timeout" : "network-error",
+      samples: samples.length,
+    });
     return { ok: false, rateLimited: false, notice: "Serwis pogodowy chwilowo niedostępny" };
   }
 }
