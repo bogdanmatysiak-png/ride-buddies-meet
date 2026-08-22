@@ -651,25 +651,17 @@ async function fetchVisualCrossing(
     }
   });
 
-  // Punkty nieobjęte zapytaniem uzupełniamy wartościami najbliższego pobranego punktu.
+  // Punktów nieobjętych zapytaniem nie interpolujemy — brak danych to jawne null.
   const points = samples.map((sample, i) => {
     const own = fetched.get(i);
-    const base = own ?? nearestFetched(fetched, i);
-    if (!base) return emptyPoint(sample, departure, minutes);
-    const { at, label } = pointAt(sample, departure, minutes);
-    return {
-      ...base,
-      label,
-      lat: sample.point[0],
-      lng: sample.point[1],
-      at: at.toISOString(),
-    } satisfies RouteWeatherPoint;
+    return own ?? emptyPoint(sample, departure, minutes);
   });
 
   if (!complete) notice = BOTH_FAILED_NOTICE;
   audit("visual-crossing", {
     complete,
     routePoints: points.length,
+    fetchedPoints: fetched.size,
     requests,
     rateLimited,
     skippedByCooldown: false,
@@ -678,22 +670,6 @@ async function fetchVisualCrossing(
   return { points, complete, notice };
 }
 
-/** Najbliższy (po indeksie) pobrany punkt prognozy. */
-function nearestFetched(
-  fetched: Map<number, RouteWeatherPoint>,
-  index: number,
-): RouteWeatherPoint | null {
-  let best: RouteWeatherPoint | null = null;
-  let bestDiff = Infinity;
-  for (const [i, point] of fetched) {
-    const diff = Math.abs(i - index);
-    if (diff < bestDiff) {
-      bestDiff = diff;
-      best = point;
-    }
-  }
-  return best;
-}
 
 
 async function computeRouteWeather(
