@@ -370,7 +370,7 @@ async function fetchOpenMeteo(
         status: res.status,
         timeout: false,
         rejectReason: res.status === 429 ? "rate-limited" : "http-error",
-        samples: samples.length,
+        selectedPoints: samples.length,
       });
       return {
         ok: false,
@@ -389,7 +389,7 @@ async function fetchOpenMeteo(
       timeout: false,
       blocks: blocks.length,
       hours: blocks.map((b) => ((b["time"] as string[] | undefined) ?? []).length),
-      samples: samples.length,
+      selectedPoints: samples.length,
       rejectReason: null,
     });
     return { ok: true, blocks };
@@ -399,7 +399,7 @@ async function fetchOpenMeteo(
       status: null,
       timeout,
       rejectReason: timeout ? "timeout" : "network-error",
-      samples: samples.length,
+      selectedPoints: samples.length,
     });
     return { ok: false, rateLimited: false, notice: "Serwis pogodowy chwilowo niedostępny" };
   }
@@ -536,7 +536,7 @@ async function fetchVisualCrossing(
   const cooling = vcCooldownUntil > now;
   audit("visual-crossing-start", {
     hasVisualCrossingKey: !!key,
-    routePoints: samples.length,
+    selectedPoints: samples.length,
     skippedByCooldown: cooling,
   });
   if (!key) return null;
@@ -693,7 +693,7 @@ async function fetchVisualCrossing(
   audit("visual-crossing", {
     complete,
     fullCoverage,
-    routePoints: points.length,
+    selectedPoints: points.length,
     fetchedPoints: fetched.size,
     requests,
     rateLimited,
