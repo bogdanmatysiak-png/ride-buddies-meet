@@ -666,15 +666,26 @@ async function fetchVisualCrossing(
     return own ?? emptyPoint(sample, departure, minutes);
   });
 
+  // Pełne pokrycie = każdy punkt trasy ma własną prognozę. Bez tego wynik nie jest
+  // kompletny i nie może wejść do świeżego cache (UI oczekuje danych dla wszystkich punktów).
+  const fullCoverage = fetched.size === samples.length;
+  if (!fullCoverage) complete = false;
   if (!complete) notice = BOTH_FAILED_NOTICE;
   audit("visual-crossing", {
     complete,
+    fullCoverage,
     routePoints: points.length,
     fetchedPoints: fetched.size,
     requests,
     rateLimited,
     skippedByCooldown: false,
-    rejectReason: rateLimited ? "rate-limited" : complete ? null : "incomplete",
+    rejectReason: rateLimited
+      ? "rate-limited"
+      : complete
+        ? null
+        : fullCoverage
+          ? "incomplete"
+          : "partial-coverage",
   });
   return { points, complete, notice };
 }
