@@ -146,8 +146,7 @@ function NewRide() {
                 spots: unlimitedSpots ? 0 : Number(f.get("spots")),
                 description: String(f.get("description")),
                 level,
-                intercom,
-                intercomType: intercomType.trim(),
+                ...intercomPayload({ intercom, intercomType }),
                 groupId,
                 encodedPolyline: plan?.encodedPolyline ?? null,
                 cameras: plan?.cameras ?? null,
@@ -302,7 +301,11 @@ function NewRide() {
               <button
                 key={String(v)}
                 type="button"
-                onClick={() => setIntercom(v)}
+                onClick={() => {
+                  const next = applyIntercomToggle({ intercom, intercomType }, v);
+                  setIntercom(next.intercom);
+                  setIntercomType(next.intercomType);
+                }}
                 className={`rounded-full border px-4 py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors ${
                   intercom === v
                     ? "border-primary bg-primary text-primary-foreground"
