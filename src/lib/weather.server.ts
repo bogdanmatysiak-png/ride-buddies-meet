@@ -697,7 +697,7 @@ async function computeRouteWeather(
   let primaryNotice: string | null = null;
 
   if (!options.skipOpenMeteo) {
-    const outcome = await fetchOpenMeteo(samples);
+    const outcome = await fetchOpenMeteo(samples, departure, input.minutes);
     if (outcome.ok) {
       primary = mapOpenMeteo(samples, outcome.blocks, departure, input.minutes);
       if (primary.complete) {
