@@ -94,6 +94,16 @@ function NewRide() {
     if (profile) setPrefs(prefsFromProfile(profile));
   }, [profile]);
 
+  // Domyślne uzupełnienie interkomu z profilu — tylko raz na otwarcie formularza.
+  const didInitializeIntercomRef = useRef(false);
+  useEffect(() => {
+    if (!profile || didInitializeIntercomRef.current) return;
+    didInitializeIntercomRef.current = true;
+    const defaults = intercomDefaultsFromProfile(profile);
+    setIntercom(defaults.intercom);
+    setIntercomType(defaults.intercomType);
+  }, [profile]);
+
   async function handleSavePrefs() {
     if (!user) return;
     setSavingPrefs(true);
