@@ -257,7 +257,7 @@ export async function fetchRouteWeather(input: {
   return value;
 }
 
-type Sample = { point: [number, number]; fraction: number };
+type Sample = { point: [number, number]; fraction: number; label: string };
 
 type ProviderResult = {
   points: RouteWeatherPoint[];
@@ -273,10 +273,10 @@ function pointAt(
 ): { at: Date; label: string } {
   return {
     at: new Date(departure.getTime() + sample.fraction * minutes * 60000),
-    label:
-      LABELS[Math.round(sample.fraction * 4)] ?? `${Math.round(sample.fraction * 100)}%`,
+    label: sample.label,
   };
 }
+
 
 function emptyPoint(sample: Sample, departure: Date, minutes: number): RouteWeatherPoint {
   const { at, label } = pointAt(sample, departure, minutes);
