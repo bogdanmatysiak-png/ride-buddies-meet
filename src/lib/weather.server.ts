@@ -32,23 +32,45 @@ function haversine(a: [number, number], b: [number, number]): number {
   return 6371000 * 2 * Math.asin(Math.sqrt(h));
 }
 
-/** Wybiera punkty co równy dystans (0%, 25%, 50%, 75%, 100%). */
-function pickAlong(points: Array<[number, number]>, count: number) {
+/**
+ * Wybiera dokładnie 3 reprezentatywne punkty trasy: początek, punkt najbliższy
+ * połowie dystansu i cel. Przy bardzo krótkiej/nietypowej geometrii zwraca
+ * mniejszą liczbę rzeczywiście różnych punktów (bez duplikatów).
+ */
+function pickRepresentative(points: Array<[number, number]>): Sample[] {
+  if (points.length === 0) return [];
   const cum: number[] = [0];
   for (let i = 1; i < points.length; i++) {
     cum.push(cum[i - 1]! + haversine(points[i - 1]!, points[i]!));
   }
-  const total = cum[cum.length - 1] ?? 0;
-  const out: Array<{ point: [number, number]; fraction: number }> = [];
-  for (let i = 0; i < count; i++) {
-    const fraction = count === 1 ? 0 : i / (count - 1);
-    const target = total * fraction;
-    let idx = cum.findIndex((d) => d >= target);
-    if (idx < 0) idx = points.length - 1;
-    out.push({ point: points[idx]!, fraction });
+  const last = points.length - 1;
+  const total = cum[last] ?? 0;
+  // Punkt najbliższy połowie dystansu (a przy zerowym dystansie — środek geometrii).
+  let midIdx = Math.floor(last / 2);
+  if (total > 0) {
+    let bestDiff = Infinity;
+    for (let i = 0; i <= last; i++) {
+      const diff = Math.abs(cum[i]! - total / 2);
+      if (diff < bestDiff) {
+        bestDiff = diff;
+        midIdx = i;
+      }
+    }
   }
-  return out;
+  const indexes = [...new Set([0, midIdx, last])].sort((a, b) => a - b);
+  const labels =
+    indexes.length === 3
+      ? ["Początek", "Połowa trasy", "Cel"]
+      : indexes.length === 2
+        ? ["Początek", "Cel"]
+        : ["Początek"];
+  return indexes.map((idx, i) => ({
+    point: points[idx]!,
+    fraction: total > 0 ? (cum[idx] ?? 0) / total : idx === 0 ? 0 : 1,
+    label: labels[i]!,
+  }));
 }
+
 
 function hourKey(date: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
