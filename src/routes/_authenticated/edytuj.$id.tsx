@@ -78,6 +78,7 @@ function EditRide() {
   const [level, setLevel] = useState<RideLevel>("chill");
   const [intercom, setIntercom] = useState(false);
   const [intercomType, setIntercomType] = useState("");
+  const [meshSupported, setMeshSupported] = useState(false);
   const [groupId, setGroupId] = useState<string | null>(null);
   const { data: groups = [] } = useQuery({
     queryKey: [...groupsQueryKey, user?.id],
@@ -128,6 +129,7 @@ function EditRide() {
     setLevel(ride.level);
     setIntercom(ride.intercom);
     setIntercomType(ride.intercomType);
+    setMeshSupported(ride.meshSupported === true);
     setGroupId(ride.groupId);
   }, [ride]);
 
@@ -214,6 +216,7 @@ function EditRide() {
         level,
         intercom,
         intercomType: intercomType.trim(),
+        meshSupported: intercom ? meshSupported : false,
         groupId,
         encodedPolyline: plan?.encodedPolyline ?? ride?.encodedPolyline ?? null,
         cameras: plan?.cameras ?? ride?.cameras ?? null,
@@ -374,7 +377,13 @@ function EditRide() {
               <button
                 key={String(v)}
                 type="button"
-                onClick={() => setIntercom(v)}
+                onClick={() => {
+                  setIntercom(v);
+                  if (!v) {
+                    setIntercomType("");
+                    setMeshSupported(false);
+                  }
+                }}
                 className={`rounded-full border px-4 py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors ${
                   intercom === v
                     ? "border-primary bg-primary text-primary-foreground"
