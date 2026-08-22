@@ -379,13 +379,25 @@ function mapOpenMeteo(
       lat: sample.point[0],
       lng: sample.point[1],
       at: at.toISOString(),
-      temperature: val("temperature_2m"),
-      cloudCover: val("cloud_cover"),
-      windSpeed: val("wind_speed_10m"),
-      windGusts: val("wind_gusts_10m"),
-      precipitation: val("precipitation"),
-      precipitationChance: val("precipitation_probability"),
+      temperature: val("temperature_2m", "temp"),
+      cloudCover: val("cloud_cover", "cloudcover"),
+      windSpeed: val("wind_speed_10m", "windspeed"),
+      windGusts: val("wind_gusts_10m", "windgust"),
+      precipitation: val("precipitation", "precip"),
+      precipitationChance: val("precipitation_probability", "precipprob"),
     } satisfies RouteWeatherPoint;
+    if (missing.length > 0 || idx < 0) {
+      audit("open-meteo-point", {
+        label,
+        matched: idx >= 0,
+        diffMinutes:
+          idx >= 0 && times[idx]
+            ? Math.round((Date.parse(`${times[idx]}Z`) - at.getTime()) / 60000)
+            : null,
+        missingFields: missing,
+      });
+    }
+    return mapped;
   });
   return { points, complete, notice };
 }
