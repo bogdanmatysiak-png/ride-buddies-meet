@@ -28,6 +28,7 @@ export type Profile = {
   city: string | null;
   intercom: boolean;
   intercom_type: string;
+  mesh_supported: boolean;
   pref_curvy: boolean;
   pref_avoid_highways: boolean;
   pref_avoid_tolls: boolean;
@@ -44,7 +45,7 @@ export function useProfile(userId: string | undefined) {
       const { data, error } = await supabase
         .from("profiles")
         .select(
-          "id, nick, bike, city, intercom, intercom_type, pref_curvy, pref_avoid_highways, pref_avoid_tolls, pref_avoid_ferries, notify_group_invite, notify_group_accepted",
+          "id, nick, bike, city, intercom, intercom_type, mesh_supported, pref_curvy, pref_avoid_highways, pref_avoid_tolls, pref_avoid_ferries, notify_group_invite, notify_group_accepted",
         )
         .eq("id", userId!)
         .maybeSingle();

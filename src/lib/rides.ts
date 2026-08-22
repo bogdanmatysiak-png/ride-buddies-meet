@@ -19,6 +19,7 @@ export type Ride = {
   description: string;
   intercom: boolean;
   intercomType: string;
+  meshSupported: boolean;
   groupId: string | null;
   groupName: string | null;
   riderIds: string[];
@@ -81,6 +82,7 @@ export async function fetchRides(): Promise<Ride[]> {
       description: r.description,
       intercom: r.intercom,
       intercomType: r.intercom_type,
+      meshSupported: r.mesh_supported === true,
       groupId: r.group_id,
       groupName: r.groups?.name ?? null,
       riderIds,
@@ -123,6 +125,7 @@ export type NewRideInput = {
   description: string;
   intercom: boolean;
   intercomType: string;
+  meshSupported?: boolean;
   groupId?: string | null;
   encodedPolyline?: string | null;
   cameras?: number | null;
@@ -167,6 +170,7 @@ export async function createRide(
       description: input.description,
       intercom: input.intercom,
       intercom_type: input.intercom ? input.intercomType : "",
+      mesh_supported: input.intercom ? input.meshSupported === true : false,
       group_id: input.groupId ?? null,
       encoded_polyline: input.encodedPolyline ?? null,
       cameras: input.cameras ?? null,
@@ -207,6 +211,7 @@ export async function updateRide(rideId: string, input: NewRideInput) {
       description: input.description,
       intercom: input.intercom,
       intercom_type: input.intercom ? input.intercomType : "",
+      mesh_supported: input.intercom ? input.meshSupported === true : false,
       group_id: input.groupId ?? null,
       encoded_polyline: input.encodedPolyline ?? null,
       cameras: input.cameras ?? null,

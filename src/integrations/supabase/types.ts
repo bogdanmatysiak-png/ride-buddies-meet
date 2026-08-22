@@ -286,6 +286,7 @@ export type Database = {
           id: string
           intercom: boolean
           intercom_type: string
+          mesh_supported: boolean
           nick: string
           notify_group_accepted: boolean
           notify_group_invite: boolean
@@ -302,6 +303,7 @@ export type Database = {
           id: string
           intercom?: boolean
           intercom_type?: string
+          mesh_supported?: boolean
           nick: string
           notify_group_accepted?: boolean
           notify_group_invite?: boolean
@@ -318,6 +320,7 @@ export type Database = {
           id?: string
           intercom?: boolean
           intercom_type?: string
+          mesh_supported?: boolean
           nick?: string
           notify_group_accepted?: boolean
           notify_group_invite?: boolean
@@ -520,6 +523,7 @@ export type Database = {
           id: string
           intercom: boolean
           intercom_type: string
+          mesh_supported: boolean
           km: number
           level: Database["public"]["Enums"]["ride_level"]
           ride_date: string
@@ -546,6 +550,7 @@ export type Database = {
           id?: string
           intercom?: boolean
           intercom_type?: string
+          mesh_supported?: boolean
           km?: number
           level?: Database["public"]["Enums"]["ride_level"]
           ride_date: string
@@ -572,6 +577,7 @@ export type Database = {
           id?: string
           intercom?: boolean
           intercom_type?: string
+          mesh_supported?: boolean
           km?: number
           level?: Database["public"]["Enums"]["ride_level"]
           ride_date?: string

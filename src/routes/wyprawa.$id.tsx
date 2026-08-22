@@ -134,6 +134,11 @@ function RideDetail() {
         </Fact>
         <Fact icon={<Users className="h-4 w-4" />} label="Interkom">
           {ride.intercom ? (ride.intercomType ? `Tak — ${ride.intercomType}` : "Tak") : "Nie"}
+          {ride.intercom && ride.meshSupported && (
+            <span className="mt-1 inline-flex rounded-full border border-primary/60 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
+              Obsługa MESH
+            </span>
+          )}
         </Fact>
         <Fact icon={<Camera className="h-4 w-4" />} label="Kontrole prędkości">
           {ride.cameras === null && ride.sectionChecks === null

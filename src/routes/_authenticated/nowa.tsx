@@ -55,6 +55,7 @@ function NewRide() {
   const [level, setLevel] = useState<RideLevel>("chill");
   const [intercom, setIntercom] = useState(false);
   const [intercomType, setIntercomType] = useState("");
+  const [meshSupported, setMeshSupported] = useState(false);
   const [busy, setBusy] = useState(false);
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
@@ -102,6 +103,7 @@ function NewRide() {
     const defaults = intercomDefaultsFromProfile(profile);
     setIntercom(defaults.intercom);
     setIntercomType(defaults.intercomType);
+    setMeshSupported(defaults.meshSupported);
   }, [profile]);
 
   async function handleSavePrefs() {
@@ -146,7 +148,7 @@ function NewRide() {
                 spots: unlimitedSpots ? 0 : Number(f.get("spots")),
                 description: String(f.get("description")),
                 level,
-                ...intercomPayload({ intercom, intercomType }),
+                ...intercomPayload({ intercom, intercomType, meshSupported }),
                 groupId,
                 encodedPolyline: plan?.encodedPolyline ?? null,
                 cameras: plan?.cameras ?? null,
@@ -302,9 +304,10 @@ function NewRide() {
                 key={String(v)}
                 type="button"
                 onClick={() => {
-                  const next = applyIntercomToggle({ intercom, intercomType }, v);
+                  const next = applyIntercomToggle({ intercom, intercomType, meshSupported }, v);
                   setIntercom(next.intercom);
                   setIntercomType(next.intercomType);
+                  setMeshSupported(next.meshSupported);
                 }}
                 className={`rounded-full border px-4 py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors ${
                   intercom === v
@@ -331,6 +334,28 @@ function NewRide() {
                 placeholder="Cardo Packtalk Edge / Sena 50S"
                 className="input-moto mt-1"
               />
+              <div className="mt-3">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Obsługa MESH
+                </span>
+                <div className="mt-2 flex gap-2">
+                  {[true, false].map((v) => (
+                    <button
+                      key={String(v)}
+                      type="button"
+                      aria-pressed={meshSupported === v}
+                      onClick={() => setMeshSupported(v)}
+                      className={`rounded-full border px-4 py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors ${
+                        meshSupported === v
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-card text-muted-foreground hover:border-primary/50"
+                      }`}
+                    >
+                      {v ? "Tak" : "Nie"}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
         </div>

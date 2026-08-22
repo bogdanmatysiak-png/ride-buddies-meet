@@ -42,6 +42,7 @@ function ProfilePage() {
   const [city, setCity] = useState("");
   const [intercom, setIntercom] = useState(false);
   const [intercomType, setIntercomType] = useState("");
+  const [meshSupported, setMeshSupported] = useState(false);
   const [prefs, setPrefs] = useState<RoutePrefs>(defaultRoutePrefs);
   const [notifyInvite, setNotifyInvite] = useState(true);
   const [notifyAccepted, setNotifyAccepted] = useState(true);
@@ -55,6 +56,7 @@ function ProfilePage() {
       setCity(profile.city ?? "");
       setIntercom(profile.intercom);
       setIntercomType(profile.intercom_type);
+      setMeshSupported(profile.mesh_supported === true);
       setPrefs(prefsFromProfile(profile));
       setNotifyInvite(profile.notify_group_invite);
       setNotifyAccepted(profile.notify_group_accepted);
@@ -79,6 +81,7 @@ function ProfilePage() {
           city: city || null,
           intercom,
           intercom_type: intercom ? intercomType.trim() : "",
+          mesh_supported: intercom ? meshSupported : false,
           ...prefsToProfile(prefs),
           notify_group_invite: notifyInvite,
           notify_group_accepted: notifyAccepted,
@@ -139,7 +142,13 @@ function ProfilePage() {
               <button
                 key={String(v)}
                 type="button"
-                onClick={() => setIntercom(v)}
+                onClick={() => {
+                  setIntercom(v);
+                  if (!v) {
+                    setIntercomType("");
+                    setMeshSupported(false);
+                  }
+                }}
                 className={`rounded-full border px-4 py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors ${
                   intercom === v
                     ? "border-primary bg-primary text-primary-foreground"
@@ -151,12 +160,36 @@ function ProfilePage() {
             ))}
           </div>
           {intercom && (
-            <input
-              value={intercomType}
-              onChange={(e) => setIntercomType(e.target.value)}
-              placeholder="Cardo Packtalk Edge / Sena 50S"
-              className="input-moto mt-3"
-            />
+            <>
+              <input
+                value={intercomType}
+                onChange={(e) => setIntercomType(e.target.value)}
+                placeholder="Cardo Packtalk Edge / Sena 50S"
+                className="input-moto mt-3"
+              />
+              <div className="mt-3">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Obsługa MESH
+                </span>
+                <div className="mt-2 flex gap-2">
+                  {[true, false].map((v) => (
+                    <button
+                      key={String(v)}
+                      type="button"
+                      aria-pressed={meshSupported === v}
+                      onClick={() => setMeshSupported(v)}
+                      className={`rounded-full border px-4 py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors ${
+                        meshSupported === v
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-card text-muted-foreground hover:border-primary/50"
+                      }`}
+                    >
+                      {v ? "Tak" : "Nie"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
           )}
         </div>
         <div>
