@@ -444,10 +444,15 @@ async function fetchVisualCrossing(
   minutes: number,
 ): Promise<ProviderResult | null> {
   const key = process.env["VISUAL_CROSSING_API_KEY"];
+  audit("visual-crossing-start", {
+    hasVisualCrossingKey: !!key,
+    routePoints: samples.length,
+  });
   if (!key) return null;
 
   let complete = true;
   let notice: string | null = null;
+
 
   const points = await mapWithLimit(samples, VC_CONCURRENCY, async (sample) => {
     const { at, label } = pointAt(sample, departure, minutes);
