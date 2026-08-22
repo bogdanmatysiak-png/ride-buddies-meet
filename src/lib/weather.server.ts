@@ -556,6 +556,11 @@ async function computeRouteWeather(
   options: { skipOpenMeteo?: boolean } = {},
 ): Promise<{ value: RouteWeather; cacheable: boolean }> {
   const samples = pickAlong(decoded, Math.min(5, Math.max(2, decoded.length)));
+  audit("start", {
+    hasVisualCrossingKey: !!process.env["VISUAL_CROSSING_API_KEY"],
+    routePoints: samples.length,
+    skipOpenMeteo: !!options.skipOpenMeteo,
+  });
 
   let primary: ProviderResult | null = null;
   let primaryNotice: string | null = null;
@@ -564,7 +569,10 @@ async function computeRouteWeather(
     const outcome = await fetchOpenMeteo(samples);
     if (outcome.ok) {
       primary = mapOpenMeteo(samples, outcome.blocks, departure, input.minutes);
-      if (primary.complete) return { value: { points: primary.points, notice: null }, cacheable: true };
+      if (primary.complete) {
+        audit("decision", { decision: "open-meteo" });
+        return { value: { points: primary.points, notice: null }, cacheable: true };
+      }
       primaryNotice = primary.notice;
     } else {
       primaryNotice = outcome.notice;
@@ -576,15 +584,19 @@ async function computeRouteWeather(
   // Fallback: Visual Crossing (klucz wyłącznie serwerowy).
   const backup = await fetchVisualCrossing(samples, departure, input.minutes);
   if (backup?.complete) {
+    audit("decision", { decision: "visual-crossing" });
     return { value: { points: backup.points, notice: null }, cacheable: true };
   }
   if (backup) {
+    audit("decision", { decision: "both-failed", reason: "visual-crossing-incomplete" });
     return { value: { points: [], notice: BOTH_FAILED_NOTICE }, cacheable: false };
   }
 
   // Brak zapasowego dostawcy — zachowaj dotychczasowe zachowanie Open-Meteo.
   if (primary && primary.points.some((p) => p.temperature !== null)) {
+    audit("decision", { decision: "open-meteo", partial: true });
     return { value: { points: primary.points, notice: primary.notice }, cacheable: false };
   }
+  audit("decision", { decision: "both-failed", reason: "no-backup-provider" });
   return { value: { points: [], notice: primaryNotice ?? BOTH_FAILED_NOTICE }, cacheable: false };
 }
