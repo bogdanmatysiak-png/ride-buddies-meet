@@ -229,11 +229,11 @@ export async function fetchRouteWeather(input: {
   minutes: number;
 }): Promise<RouteWeather> {
   const decoded = decodePolyline(input.encodedPolyline);
-  if (decoded.length === 0) return { points: [], notice: "Brak kształtu trasy" };
+  if (decoded.length === 0) return { points: [], notice: "Brak kształtu trasy", provider: null };
 
   const departure = new Date(localToUtc(input.date, input.time || "09:00"));
   if (Number.isNaN(departure.getTime())) {
-    return { points: [], notice: "Nieprawidłowa data lub godzina wyjazdu" };
+    return { points: [], notice: "Nieprawidłowa data lub godzina wyjazdu", provider: null };
   }
 
   const key = cacheKey(input);
@@ -248,16 +248,18 @@ export async function fetchRouteWeather(input: {
     if (!cooling) scheduleRefresh(key, input, decoded, departure);
     audit("decision", { decision: "stale-cache", cooling, ageMinutes: Math.round(age / 60000) });
     return {
+      ...usableStale.value,
       points: usableStale.value.points,
       notice: cooling ? RATE_LIMIT_STALE_NOTICE : STALE_NOTICE,
     };
   }
   if (cached) cache.delete(key);
   if (cooling) {
-    // W czasie cooldownu pomijamy Open-Meteo i próbujemy zapasowego dostawcy.
-    if (!process.env["VISUAL_CROSSING_API_KEY"]) {
-      return { points: [], notice: RATE_LIMIT_NOTICE };
+    // W czasie cooldownu pomijamy Open-Meteo i próbujemy zapasowych dostawców.
+    if (!hasAnyFallbackKey()) {
+      return { points: [], notice: RATE_LIMIT_NOTICE, provider: null };
     }
+
     const cooled = await computeRouteWeather(input, decoded, departure, { skipOpenMeteo: true });
     if (cooled.cacheable) storeInCache(key, cooled.value);
     return cooled.value;
