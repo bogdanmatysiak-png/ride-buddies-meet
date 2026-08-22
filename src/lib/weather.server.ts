@@ -467,45 +467,85 @@ async function fetchVisualCrossing(
       const res = await fetchWithTimeout(url);
       if (!res.ok) {
         complete = false;
+        audit("visual-crossing-point", {
+          label,
+          status: res.status,
+          timeout: false,
+          rejectReason: "http-error",
+        });
         return emptyPoint(sample, departure, minutes);
       }
       const json = (await res.json()) as { days?: Array<{ hours?: VcHour[] }> };
-      const hours = (json.days ?? []).flatMap((d) => d.hours ?? []);
+      const days = json.days ?? [];
+      const hours = days.flatMap((d) => d.hours ?? []);
       const idx = nearestIndex(
         hours.map((h) => (typeof h.datetimeEpoch === "number" ? h.datetimeEpoch * 1000 : NaN)),
         at.getTime(),
       );
       if (idx < 0) {
         complete = false;
+        audit("visual-crossing-point", {
+          label,
+          status: res.status,
+          timeout: false,
+          days: days.length,
+          hours: hours.length,
+          rejectReason: "no-hour-match",
+          missingFields: ["temp", "cloudcover", "windspeed", "windgust", "precip", "precipprob"],
+        });
         return emptyPoint(sample, departure, minutes);
       }
       const hour = hours[idx]!;
-      const num = (value: number | null | undefined) => {
+      const missing: string[] = [];
+      const num = (value: number | null | undefined, auditName: string) => {
         if (typeof value !== "number") {
           complete = false;
+          missing.push(auditName);
           return null;
         }
         return value;
       };
-      return {
+      const mapped = {
         label,
         lat: sample.point[0],
         lng: sample.point[1],
         at: at.toISOString(),
-        temperature: num(hour.temp),
-        cloudCover: num(hour.cloudcover),
-        windSpeed: num(hour.windspeed),
-        windGusts: num(hour.windgust),
-        precipitation: num(hour.precip),
-        precipitationChance: num(hour.precipprob),
+        temperature: num(hour.temp, "temp"),
+        cloudCover: num(hour.cloudcover, "cloudcover"),
+        windSpeed: num(hour.windspeed, "windspeed"),
+        windGusts: num(hour.windgust, "windgust"),
+        precipitation: num(hour.precip, "precip"),
+        precipitationChance: num(hour.precipprob, "precipprob"),
       } satisfies RouteWeatherPoint;
-    } catch {
+      audit("visual-crossing-point", {
+        label,
+        status: res.status,
+        timeout: false,
+        days: days.length,
+        hours: hours.length,
+        diffMinutes:
+          typeof hour.datetimeEpoch === "number"
+            ? Math.round((hour.datetimeEpoch * 1000 - at.getTime()) / 60000)
+            : null,
+        missingFields: missing,
+        rejectReason: missing.length > 0 ? "missing-fields" : null,
+      });
+      return mapped;
+    } catch (e) {
       complete = false;
+      const timeout = e instanceof Error && e.name === "AbortError";
+      audit("visual-crossing-point", {
+        label,
+        status: null,
+        timeout,
+        rejectReason: timeout ? "timeout" : "network-error",
+      });
       return emptyPoint(sample, departure, minutes);
     }
   });
 
   if (!complete) notice = BOTH_FAILED_NOTICE;
+  audit("visual-crossing", { complete, routePoints: points.length });
   return { points, complete, notice };
 }
 
