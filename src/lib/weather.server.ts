@@ -717,12 +717,16 @@ async function computeRouteWeather(
   departure: Date,
   options: { skipOpenMeteo?: boolean } = {},
 ): Promise<{ value: RouteWeather; cacheable: boolean }> {
-  const samples = pickAlong(decoded, Math.min(5, Math.max(2, decoded.length)));
+  // Jedna wspólna lista punktów dla obu dostawców: Początek → Połowa trasy → Cel.
+  const samples = pickRepresentative(decoded).slice(0, MAX_POINTS);
   audit("start", {
     hasVisualCrossingKey: !!process.env["VISUAL_CROSSING_API_KEY"],
-    routePoints: samples.length,
+    routePoints: decoded.length,
+    selectedPoints: samples.length,
+    labels: samples.map((s) => s.label),
     skipOpenMeteo: !!options.skipOpenMeteo,
   });
+
 
   let primary: ProviderResult | null = null;
   let primaryNotice: string | null = null;
