@@ -459,7 +459,9 @@ describe("fallback Visual Crossing", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const res = await fetchRouteWeather(input);
-    expect(Object.keys(res).sort()).toEqual(["notice", "points"]);
+    expect(Object.keys(res).sort()).toEqual(["fallbacksTried", "notice", "points", "provider"]);
+    expect(res.provider).toBe("visual-crossing");
+
     expect(Object.keys(res.points[0]!).sort()).toEqual(
       [
         "at",
