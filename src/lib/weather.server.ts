@@ -358,18 +358,23 @@ function mapOpenMeteo(
         notice = "Prognoza jest dostępna maksymalnie 16 dni w przód";
       }
     }
-    const val = (key: string) => {
-      if (idx < 0) return null;
+    const missing: string[] = [];
+    const val = (key: string, auditName: string) => {
+      if (idx < 0) {
+        missing.push(auditName);
+        return null;
+      }
       const value = (hourly[key] as Array<number | null> | undefined)?.[idx];
       if (typeof value !== "number") {
         complete = false;
+        missing.push(auditName);
         notice =
           notice ?? "Serwis pogodowy zwrócił niepełne dane — część wartości może być nieznana";
         return null;
       }
       return value;
     };
-    return {
+    const mapped = {
       label,
       lat: sample.point[0],
       lng: sample.point[1],
