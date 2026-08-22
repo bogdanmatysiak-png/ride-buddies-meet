@@ -559,13 +559,14 @@ async function fetchVisualCrossing(
       });
       return;
     }
-    // Minimalny zakres: godzina przed i po czasie punktu (Timeline API przyjmuje
-    // zakres ISO datetime w lokalnej strefie lokalizacji) — 3 godziny zamiast całej doby.
-    const from = localDateTime(at.getTime() - WINDOW_BUFFER_MS);
-    const to = localDateTime(at.getTime() + WINDOW_BUFFER_MS);
+    // Najkrótszy obsługiwany zakres: daty lokalne lokalizacji (zwykle 1 dzień) z include=hours.
+    // Zakres ISO datetime bywa odrzucany, więc trzymamy się dat — dopasowanie po datetimeEpoch (±60 min).
+    const from = localDateTime(at.getTime() - WINDOW_BUFFER_MS).slice(0, 10);
+    const to = localDateTime(at.getTime() + WINDOW_BUFFER_MS).slice(0, 10);
+    const range = from === to ? from : `${from}/${to}`;
     const url =
       `https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/` +
-      `${sample.point[0].toFixed(4)},${sample.point[1].toFixed(4)}/${from}/${to}` +
+      `${sample.point[0].toFixed(4)},${sample.point[1].toFixed(4)}/${range}` +
       `?unitGroup=metric&include=hours&contentType=json` +
       `&elements=datetimeEpoch,temp,cloudcover,windspeed,windgust,precip,precipprob` +
       `&key=${encodeURIComponent(key)}`;
