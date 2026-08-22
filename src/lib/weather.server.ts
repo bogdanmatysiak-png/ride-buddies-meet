@@ -519,16 +519,11 @@ async function mapWithLimit<T, R>(
   return out;
 }
 
-/** Indeksy reprezentatywnych punktów (start, środek, cel) pobieranych z fallbacku. */
+/** Indeksy punktów pobieranych z fallbacku (te same, co prezentowane; maks. 3). */
 function representativeIndexes(count: number, max = VC_MAX_POINTS): number[] {
-  if (count <= max) return samplesRange(count);
-  const picks = new Set<number>([0, Math.floor((count - 1) / 2), count - 1]);
-  return [...picks].sort((a, b) => a - b);
+  return Array.from({ length: Math.min(count, max) }, (_, i) => i);
 }
 
-function samplesRange(count: number): number[] {
-  return Array.from({ length: count }, (_, i) => i);
-}
 
 /** Zapasowy dostawca prognozy (Timeline API, jednostki metryczne). */
 async function fetchVisualCrossing(
