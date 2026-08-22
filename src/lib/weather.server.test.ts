@@ -361,7 +361,7 @@ describe("fallback Visual Crossing", () => {
     expect(res.notice).toBeNull();
     expect(res.points.every((p) => p.temperature !== null)).toBe(true);
   });
-  it("fallback pyta o minimalny zakres godzin, nie o całą dobę", async () => {
+  it("fallback pyta o najkrótszy zakres dat z godzinami", async () => {
     const fetchMock = vi.fn(async (url: string) =>
       String(url).includes("open-meteo")
         ? ({ ok: false, status: 500, json: async () => ({}) } as unknown as Response)
@@ -373,11 +373,11 @@ describe("fallback Visual Crossing", () => {
     const vcUrl = String(
       fetchMock.mock.calls.map((c) => String(c[0])).find((u) => u.includes("visualcrossing"))!,
     );
-    // 11:00 lokalnie ±1 h → zakres 10:00–12:00 tego samego dnia.
-    expect(vcUrl).toContain("/2026-08-22T10:00:00/2026-08-22T12:00:00");
+    // 11:00 lokalnie ±1 h → jeden dzień lokalny, godziny z include=hours.
+    expect(vcUrl).toContain("/2026-08-22?");
     expect(vcUrl).toContain("include=hours");
-    expect(vcUrl).not.toContain(`/2026-08-22/2026-08-22?`);
   });
+
 
   it("fallback wykonuje jedno zapytanie naraz", async () => {
     let active = 0;
@@ -398,7 +398,7 @@ describe("fallback Visual Crossing", () => {
     expect(maxActive).toBe(1);
   });
 
-  it("brakujące punkty fallbacku pozostają puste (bez interpolacji)", async () => {
+  it("brakujące punkty fallbacku nie są interpolowane ani cache'owane", async () => {
     let vcCalls = 0;
     const fetchMock = vi.fn(async (url: string) => {
       if (String(url).includes("open-meteo")) {
@@ -414,7 +414,9 @@ describe("fallback Visual Crossing", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const res = await fetchRouteWeather(input);
-    expect(res.points).toEqual([]); // niekompletny wynik → czytelny komunikat, bez danych
+    // Zwracamy wyłącznie punkty z realnymi danymi, nigdy pustych placeholderów.
+    expect(res.points.length).toBeGreaterThan(0);
+    expect(res.points.every((p) => p.temperature !== null)).toBe(true);
     expect(res.notice).toBe("Nie udało się pobrać prognozy. Spróbuj ponownie za kilka minut.");
 
     // Niekompletny wynik nie jest cache'owany.
@@ -422,6 +424,7 @@ describe("fallback Visual Crossing", () => {
     await fetchRouteWeather(input);
     expect(fetchMock.mock.calls.length).toBeGreaterThan(before);
   });
+
 
   it("publiczny kształt danych pozostaje zgodny z UI", async () => {
     const fetchMock = vi.fn(async (url: string) =>

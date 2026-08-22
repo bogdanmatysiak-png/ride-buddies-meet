@@ -559,13 +559,14 @@ async function fetchVisualCrossing(
       });
       return;
     }
-    // Minimalny zakres: godzina przed i po czasie punktu (Timeline API przyjmuje
-    // zakres ISO datetime w lokalnej strefie lokalizacji) — 3 godziny zamiast całej doby.
-    const from = localDateTime(at.getTime() - WINDOW_BUFFER_MS);
-    const to = localDateTime(at.getTime() + WINDOW_BUFFER_MS);
+    // Najkrótszy obsługiwany zakres: daty lokalne lokalizacji (zwykle 1 dzień) z include=hours.
+    // Zakres ISO datetime bywa odrzucany, więc trzymamy się dat — dopasowanie po datetimeEpoch (±60 min).
+    const from = localDateTime(at.getTime() - WINDOW_BUFFER_MS).slice(0, 10);
+    const to = localDateTime(at.getTime() + WINDOW_BUFFER_MS).slice(0, 10);
+    const range = from === to ? from : `${from}/${to}`;
     const url =
       `https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/` +
-      `${sample.point[0].toFixed(4)},${sample.point[1].toFixed(4)}/${from}/${to}` +
+      `${sample.point[0].toFixed(4)},${sample.point[1].toFixed(4)}/${range}` +
       `?unitGroup=metric&include=hours&contentType=json` +
       `&elements=datetimeEpoch,temp,cloudcover,windspeed,windgust,precip,precipprob` +
       `&key=${encodeURIComponent(key)}`;
@@ -665,15 +666,26 @@ async function fetchVisualCrossing(
     return own ?? emptyPoint(sample, departure, minutes);
   });
 
+  // Pełne pokrycie = każdy punkt trasy ma własną prognozę. Bez tego wynik nie jest
+  // kompletny i nie może wejść do świeżego cache (UI oczekuje danych dla wszystkich punktów).
+  const fullCoverage = fetched.size === samples.length;
+  if (!fullCoverage) complete = false;
   if (!complete) notice = BOTH_FAILED_NOTICE;
   audit("visual-crossing", {
     complete,
+    fullCoverage,
     routePoints: points.length,
     fetchedPoints: fetched.size,
     requests,
     rateLimited,
     skippedByCooldown: false,
-    rejectReason: rateLimited ? "rate-limited" : complete ? null : "incomplete",
+    rejectReason: rateLimited
+      ? "rate-limited"
+      : complete
+        ? null
+        : fullCoverage
+          ? "incomplete"
+          : "partial-coverage",
   });
   return { points, complete, notice };
 }
@@ -719,9 +731,19 @@ async function computeRouteWeather(
     return { value: { points: backup.points, notice: null }, cacheable: true };
   }
   if (backup) {
+    const partial = backup.points.filter((p) => p.temperature !== null);
+    if (partial.length > 0) {
+      // Częściowe pokrycie: pokazujemy wyłącznie punkty z realnymi danymi, bez cache.
+      audit("decision", { decision: "visual-crossing", partial: true, points: partial.length });
+      return {
+        value: { points: partial, notice: BOTH_FAILED_NOTICE },
+        cacheable: false,
+      };
+    }
     audit("decision", { decision: "both-failed", reason: "visual-crossing-incomplete" });
     return { value: { points: [], notice: BOTH_FAILED_NOTICE }, cacheable: false };
   }
+
 
   // Brak zapasowego dostawcy — zachowaj dotychczasowe zachowanie Open-Meteo.
   if (primary && primary.points.some((p) => p.temperature !== null)) {
