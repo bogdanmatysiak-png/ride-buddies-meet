@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { createRide, levelLabel, ridesQueryKey, type RideLevel } from "@/lib/rides";
 import { fetchMyGroups, groupsQueryKey } from "@/lib/groups";
@@ -23,6 +23,11 @@ import {
   type RoutePrefs,
 } from "@/lib/route-prefs";
 import { useProfile, useSession } from "@/hooks/useAuth";
+import {
+  applyIntercomToggle,
+  intercomDefaultsFromProfile,
+  intercomPayload,
+} from "@/lib/intercom";
 
 export const Route = createFileRoute("/_authenticated/nowa")({
   head: () => ({
@@ -89,6 +94,16 @@ function NewRide() {
     if (profile) setPrefs(prefsFromProfile(profile));
   }, [profile]);
 
+  // Domyślne uzupełnienie interkomu z profilu — tylko raz na otwarcie formularza.
+  const didInitializeIntercomRef = useRef(false);
+  useEffect(() => {
+    if (!profile || didInitializeIntercomRef.current) return;
+    didInitializeIntercomRef.current = true;
+    const defaults = intercomDefaultsFromProfile(profile);
+    setIntercom(defaults.intercom);
+    setIntercomType(defaults.intercomType);
+  }, [profile]);
+
   async function handleSavePrefs() {
     if (!user) return;
     setSavingPrefs(true);
@@ -131,8 +146,7 @@ function NewRide() {
                 spots: unlimitedSpots ? 0 : Number(f.get("spots")),
                 description: String(f.get("description")),
                 level,
-                intercom,
-                intercomType: intercomType.trim(),
+                ...intercomPayload({ intercom, intercomType }),
                 groupId,
                 encodedPolyline: plan?.encodedPolyline ?? null,
                 cameras: plan?.cameras ?? null,
@@ -287,7 +301,11 @@ function NewRide() {
               <button
                 key={String(v)}
                 type="button"
-                onClick={() => setIntercom(v)}
+                onClick={() => {
+                  const next = applyIntercomToggle({ intercom, intercomType }, v);
+                  setIntercom(next.intercom);
+                  setIntercomType(next.intercomType);
+                }}
                 className={`rounded-full border px-4 py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors ${
                   intercom === v
                     ? "border-primary bg-primary text-primary-foreground"
