@@ -134,9 +134,10 @@ export function RouteWeather({
         </ul>
       )}
       <p className="mt-2 text-[11px] text-muted-foreground">
-        Dane: Open-Meteo. Godziny (czas lokalny) to szacowany czas dojazdu do kolejnych punktów trasy.
+        {sourceLabel(data)} Godziny (czas lokalny) to szacowany czas dojazdu do kolejnych punktów trasy.
         {updatedAt && ` Aktualizacja: ${hhmm(updatedAt.toISOString())}.`}
       </p>
+
     </div>
   );
 }
