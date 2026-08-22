@@ -731,9 +731,19 @@ async function computeRouteWeather(
     return { value: { points: backup.points, notice: null }, cacheable: true };
   }
   if (backup) {
+    const partial = backup.points.filter((p) => p.temperature !== null);
+    if (partial.length > 0) {
+      // Częściowe pokrycie: pokazujemy wyłącznie punkty z realnymi danymi, bez cache.
+      audit("decision", { decision: "visual-crossing", partial: true, points: partial.length });
+      return {
+        value: { points: partial, notice: BOTH_FAILED_NOTICE },
+        cacheable: false,
+      };
+    }
     audit("decision", { decision: "both-failed", reason: "visual-crossing-incomplete" });
     return { value: { points: [], notice: BOTH_FAILED_NOTICE }, cacheable: false };
   }
+
 
   // Brak zapasowego dostawcy — zachowaj dotychczasowe zachowanie Open-Meteo.
   if (primary && primary.points.some((p) => p.temperature !== null)) {
