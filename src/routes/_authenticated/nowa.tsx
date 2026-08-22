@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { createRide, levelLabel, ridesQueryKey, type RideLevel } from "@/lib/rides";
 import { fetchMyGroups, groupsQueryKey } from "@/lib/groups";
@@ -23,6 +23,11 @@ import {
   type RoutePrefs,
 } from "@/lib/route-prefs";
 import { useProfile, useSession } from "@/hooks/useAuth";
+import {
+  applyIntercomToggle,
+  intercomDefaultsFromProfile,
+  intercomPayload,
+} from "@/lib/intercom";
 
 export const Route = createFileRoute("/_authenticated/nowa")({
   head: () => ({
