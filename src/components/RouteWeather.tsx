@@ -14,6 +14,21 @@ function hhmm(iso: string) {
 const num = (v: number | null, unit: string, digits = 0) =>
   v === null || v === undefined ? "—" : `${v.toFixed(digits)}${unit}`;
 
+const PROVIDER_LABELS: Record<string, string> = {
+  "open-meteo": "Open-Meteo",
+  "visual-crossing": "Visual Crossing",
+  weatherapi: "WeatherAPI.com",
+  openweather: "OpenWeather",
+};
+
+/** Atrybucja faktycznie użytego źródła danych (wymagana m.in. przez WeatherAPI.com). */
+function sourceLabel(data: RouteWeatherData | null): string {
+  if (data?.providers && data.providers.length > 1) return "Dane: kilka źródeł.";
+  const name = data?.provider ? PROVIDER_LABELS[data.provider] : null;
+  return `Dane: ${name ?? "Open-Meteo"}.`;
+}
+
+
 /** Prognoza pogody na godzinę wyjazdu w kilku punktach wyznaczonej trasy. */
 export function RouteWeather({
   encodedPolyline,
@@ -134,9 +149,10 @@ export function RouteWeather({
         </ul>
       )}
       <p className="mt-2 text-[11px] text-muted-foreground">
-        Dane: Open-Meteo. Godziny (czas lokalny) to szacowany czas dojazdu do kolejnych punktów trasy.
+        {sourceLabel(data)} Godziny (czas lokalny) to szacowany czas dojazdu do kolejnych punktów trasy.
         {updatedAt && ` Aktualizacja: ${hhmm(updatedAt.toISOString())}.`}
       </p>
+
     </div>
   );
 }

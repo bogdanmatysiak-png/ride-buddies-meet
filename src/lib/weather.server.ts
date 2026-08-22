@@ -16,11 +16,20 @@ export type RouteWeatherPoint = {
   precipitationChance: number | null;
 };
 
+export type WeatherProvider = "open-meteo" | "visual-crossing" | "weatherapi" | "openweather";
+
 export type RouteWeather = {
   points: RouteWeatherPoint[];
   /** Ostrzeżenie, gdy prognoza nie obejmuje daty wyjazdu. */
   notice: string | null;
+  /** Diagnostyka (bez danych tajnych): faktycznie użyte źródło danych. */
+  provider: WeatherProvider | null;
+  /** Wszystkie źródła użyte dla prezentowanych punktów (gdy więcej niż jedno). */
+  providers?: WeatherProvider[];
+  /** Dostawcy wypróbowani przed sukcesem (kolejność prób). */
+  fallbacksTried?: WeatherProvider[];
 };
+
 
 function haversine(a: [number, number], b: [number, number]): number {
   const toRad = (v: number) => (v * Math.PI) / 180;
@@ -220,11 +229,11 @@ export async function fetchRouteWeather(input: {
   minutes: number;
 }): Promise<RouteWeather> {
   const decoded = decodePolyline(input.encodedPolyline);
-  if (decoded.length === 0) return { points: [], notice: "Brak kształtu trasy" };
+  if (decoded.length === 0) return { points: [], notice: "Brak kształtu trasy", provider: null };
 
   const departure = new Date(localToUtc(input.date, input.time || "09:00"));
   if (Number.isNaN(departure.getTime())) {
-    return { points: [], notice: "Nieprawidłowa data lub godzina wyjazdu" };
+    return { points: [], notice: "Nieprawidłowa data lub godzina wyjazdu", provider: null };
   }
 
   const key = cacheKey(input);
@@ -239,16 +248,18 @@ export async function fetchRouteWeather(input: {
     if (!cooling) scheduleRefresh(key, input, decoded, departure);
     audit("decision", { decision: "stale-cache", cooling, ageMinutes: Math.round(age / 60000) });
     return {
+      ...usableStale.value,
       points: usableStale.value.points,
       notice: cooling ? RATE_LIMIT_STALE_NOTICE : STALE_NOTICE,
     };
   }
   if (cached) cache.delete(key);
   if (cooling) {
-    // W czasie cooldownu pomijamy Open-Meteo i próbujemy zapasowego dostawcy.
-    if (!process.env["VISUAL_CROSSING_API_KEY"]) {
-      return { points: [], notice: RATE_LIMIT_NOTICE };
+    // W czasie cooldownu pomijamy Open-Meteo i próbujemy zapasowych dostawców.
+    if (!hasAnyFallbackKey()) {
+      return { points: [], notice: RATE_LIMIT_NOTICE, provider: null };
     }
+
     const cooled = await computeRouteWeather(input, decoded, departure, { skipOpenMeteo: true });
     if (cooled.cacheable) storeInCache(key, cooled.value);
     return cooled.value;
@@ -709,7 +720,265 @@ async function fetchVisualCrossing(
   return { points, complete, notice };
 }
 
+// ---------------------------------------------------------------------------
+// Dostawcy 3 i 4: WeatherAPI.com oraz OpenWeather (5 day / 3 hour forecast).
+// Klucze wyłącznie serwerowe; brak klucza = dostawca pomijany bez błędu.
+// ---------------------------------------------------------------------------
 
+type PointFields = Omit<RouteWeatherPoint, "label" | "lat" | "lng" | "at">;
+
+/** Osobne cooldowny po HTTP 429 dla każdego dodatkowego dostawcy. */
+const PROVIDER_COOLDOWN_MS = 600000;
+const providerCooldowns: Record<"weatherapi" | "openweather", number> = {
+  weatherapi: 0,
+  openweather: 0,
+};
+
+function hasAnyFallbackKey(): boolean {
+  return (
+    !!process.env["VISUAL_CROSSING_API_KEY"] ||
+    !!process.env["WEATHERAPI_API_KEY"] ||
+    !!process.env["OPENWEATHER_API_KEY"]
+  );
+}
+
+function completeFields(p: RouteWeatherPoint): boolean {
+  return (
+    p.temperature !== null &&
+    p.cloudCover !== null &&
+    p.windSpeed !== null &&
+    p.windGusts !== null &&
+    p.precipitation !== null &&
+    p.precipitationChance !== null
+  );
+}
+
+/**
+ * Sekwencyjnie pobiera prognozę dla punktów trasy z dostawcy „punkt po punkcie”.
+ * Zwraca null, gdy nie ma klucza (dostawca pomijany).
+ */
+async function fetchPerPointProvider(opts: {
+  name: "weatherapi" | "openweather";
+  keyName: "WEATHERAPI_API_KEY" | "OPENWEATHER_API_KEY";
+  samples: Sample[];
+  departure: Date;
+  minutes: number;
+  buildUrl: (sample: Sample, at: Date, key: string) => string;
+  extract: (json: unknown, at: Date) => PointFields | null;
+}): Promise<ProviderResult | null> {
+  const key = process.env[opts.keyName];
+  if (!key) {
+    audit(`${opts.name}-skip`, { reason: "no-key" });
+    return null;
+  }
+  const now = Date.now();
+  if (providerCooldowns[opts.name] > now) {
+    audit(opts.name, {
+      complete: false,
+      requests: 0,
+      skippedByCooldown: true,
+      rejectReason: "cooldown",
+      cooldownRemainingMinutes: Math.ceil((providerCooldowns[opts.name] - now) / 60000),
+    });
+    return {
+      points: opts.samples.map((s) => emptyPoint(s, opts.departure, opts.minutes)),
+      complete: false,
+      notice: BOTH_FAILED_NOTICE,
+    };
+  }
+
+  const wanted = representativeIndexes(opts.samples.length, MAX_POINTS);
+  const fetched = new Map<number, RouteWeatherPoint>();
+  let requests = 0;
+  let rateLimited = false;
+
+  for (const index of wanted) {
+    if (rateLimited) break;
+    const sample = opts.samples[index]!;
+    const { at, label } = pointAt(sample, opts.departure, opts.minutes);
+    try {
+      requests++;
+      const res = await fetchWithTimeout(opts.buildUrl(sample, at, key));
+      if (!res.ok) {
+        if (res.status === 429) {
+          rateLimited = true;
+          providerCooldowns[opts.name] = Date.now() + PROVIDER_COOLDOWN_MS;
+          audit(`${opts.name}-rate-limit`, {
+            cooldownMinutes: Math.round(PROVIDER_COOLDOWN_MS / 60000),
+            requests,
+          });
+        }
+        audit(`${opts.name}-point`, {
+          label,
+          status: res.status,
+          timeout: false,
+          rejectReason: res.status === 429 ? "rate-limited" : "http-error",
+        });
+        continue;
+      }
+      let json: unknown;
+      try {
+        json = await res.json();
+      } catch {
+        audit(`${opts.name}-point`, { label, status: res.status, rejectReason: "invalid-json" });
+        continue;
+      }
+      const fields = opts.extract(json, at);
+      if (!fields) {
+        audit(`${opts.name}-point`, { label, status: res.status, rejectReason: "no-hour-match" });
+        continue;
+      }
+      const mapped: RouteWeatherPoint = {
+        label,
+        lat: sample.point[0],
+        lng: sample.point[1],
+        at: at.toISOString(),
+        ...fields,
+      };
+      if (!completeFields(mapped)) {
+        audit(`${opts.name}-point`, { label, status: res.status, rejectReason: "missing-fields" });
+        continue;
+      }
+      fetched.set(index, mapped);
+      audit(`${opts.name}-point`, { label, status: res.status, rejectReason: null });
+    } catch (e) {
+      const timeout = e instanceof Error && e.name === "AbortError";
+      audit(`${opts.name}-point`, {
+        label,
+        status: null,
+        timeout,
+        rejectReason: timeout ? "timeout" : "network-error",
+      });
+    }
+  }
+
+  const points = opts.samples.map(
+    (sample, i) => fetched.get(i) ?? emptyPoint(sample, opts.departure, opts.minutes),
+  );
+  const complete = fetched.size === opts.samples.length;
+  audit(opts.name, {
+    complete,
+    requests,
+    rateLimited,
+    fetchedPoints: fetched.size,
+    selectedPoints: points.length,
+    rejectReason: rateLimited ? "rate-limited" : complete ? null : "partial-coverage",
+  });
+  return { points, complete, notice: complete ? null : BOTH_FAILED_NOTICE };
+}
+
+type WapiHour = {
+  time_epoch?: number;
+  temp_c?: number | null;
+  cloud?: number | null;
+  wind_kph?: number | null;
+  gust_kph?: number | null;
+  precip_mm?: number | null;
+  chance_of_rain?: number | null;
+};
+
+/** Minimalna liczba dni forecast.json (1-3) potrzebna dla czasu przejazdu. */
+function weatherApiDays(at: Date): number {
+  const days = Math.ceil((at.getTime() + WINDOW_BUFFER_MS - Date.now()) / 86400000) + 1;
+  return Math.min(Math.max(days, 1), 3);
+}
+
+async function fetchWeatherApi(
+  samples: Sample[],
+  departure: Date,
+  minutes: number,
+): Promise<ProviderResult | null> {
+  return fetchPerPointProvider({
+    name: "weatherapi",
+    keyName: "WEATHERAPI_API_KEY",
+    samples,
+    departure,
+    minutes,
+    buildUrl: (sample, at, key) =>
+      `https://api.weatherapi.com/v1/forecast.json?key=${encodeURIComponent(key)}` +
+      `&q=${sample.point[0].toFixed(4)},${sample.point[1].toFixed(4)}` +
+      `&days=${weatherApiDays(at)}&aqi=no&alerts=no`,
+    extract: (json, at) => {
+      const data = json as { forecast?: { forecastday?: Array<{ hour?: WapiHour[] }> } };
+      const hours = (data.forecast?.forecastday ?? []).flatMap((d) => d.hour ?? []);
+      const idx = nearestIndex(
+        hours.map((h) => (typeof h.time_epoch === "number" ? h.time_epoch * 1000 : NaN)),
+        at.getTime(),
+      );
+      if (idx < 0) return null;
+      const h = hours[idx]!;
+      const num = (v: number | null | undefined) => (typeof v === "number" ? v : null);
+      return {
+        temperature: num(h.temp_c),
+        cloudCover: num(h.cloud),
+        windSpeed: num(h.wind_kph),
+        windGusts: num(h.gust_kph),
+        precipitation: num(h.precip_mm),
+        precipitationChance: num(h.chance_of_rain),
+      };
+    },
+  });
+}
+
+type OwEntry = {
+  dt?: number;
+  main?: { temp?: number | null };
+  clouds?: { all?: number | null };
+  wind?: { speed?: number | null; gust?: number | null };
+  rain?: Record<string, number | undefined>;
+  snow?: Record<string, number | undefined>;
+  pop?: number | null;
+};
+
+/** Rekordy OpenWeather są 3-godzinne — tolerancja dopasowania to 90 minut. */
+const OW_TOLERANCE_MS = 5400000;
+
+async function fetchOpenWeather(
+  samples: Sample[],
+  departure: Date,
+  minutes: number,
+): Promise<ProviderResult | null> {
+  return fetchPerPointProvider({
+    name: "openweather",
+    keyName: "OPENWEATHER_API_KEY",
+    samples,
+    departure,
+    minutes,
+    buildUrl: (sample, _at, key) =>
+      `https://api.openweathermap.org/data/2.5/forecast?lat=${sample.point[0].toFixed(4)}` +
+      `&lon=${sample.point[1].toFixed(4)}&units=metric&appid=${encodeURIComponent(key)}`,
+    extract: (json, at) => {
+      const data = json as { list?: OwEntry[] };
+      const list = data.list ?? [];
+      const stamps = list.map((e) => (typeof e.dt === "number" ? e.dt * 1000 : NaN));
+      let best = -1;
+      let bestDiff = Infinity;
+      for (let i = 0; i < stamps.length; i++) {
+        const diff = Math.abs(stamps[i]! - at.getTime());
+        if (!Number.isNaN(stamps[i]) && diff < bestDiff) {
+          bestDiff = diff;
+          best = i;
+        }
+      }
+      if (best < 0 || bestDiff > OW_TOLERANCE_MS) return null;
+      const e = list[best]!;
+      const num = (v: number | null | undefined) => (typeof v === "number" ? v : null);
+      const ms = num(e.wind?.speed);
+      const gust = num(e.wind?.gust);
+      const rain = num(e.rain?.["3h"]) ?? 0;
+      const snow = num(e.snow?.["3h"]) ?? 0;
+      const pop = num(e.pop);
+      return {
+        temperature: num(e.main?.temp),
+        cloudCover: num(e.clouds?.all),
+        windSpeed: ms === null ? null : ms * 3.6,
+        windGusts: gust === null ? (ms === null ? null : ms * 3.6) : gust * 3.6,
+        precipitation: rain + snow,
+        precipitationChance: pop === null ? null : Math.round(pop * 100),
+      };
+    },
+  });
+}
 
 async function computeRouteWeather(
   input: { encodedPolyline: string; date: string; time: string; minutes: number },
@@ -717,28 +986,57 @@ async function computeRouteWeather(
   departure: Date,
   options: { skipOpenMeteo?: boolean } = {},
 ): Promise<{ value: RouteWeather; cacheable: boolean }> {
-  // Jedna wspólna lista punktów dla obu dostawców: Początek → Połowa trasy → Cel.
+  // Jedna wspólna lista punktów dla wszystkich dostawców: Początek → Połowa trasy → Cel.
   const samples = pickRepresentative(decoded).slice(0, MAX_POINTS);
   audit("start", {
     hasVisualCrossingKey: !!process.env["VISUAL_CROSSING_API_KEY"],
+    hasWeatherApiKey: !!process.env["WEATHERAPI_API_KEY"],
+    hasOpenWeatherKey: !!process.env["OPENWEATHER_API_KEY"],
     routePoints: decoded.length,
     selectedPoints: samples.length,
     labels: samples.map((s) => s.label),
     skipOpenMeteo: !!options.skipOpenMeteo,
   });
 
-
-  let primary: ProviderResult | null = null;
   let primaryNotice: string | null = null;
+  const tried: WeatherProvider[] = [];
+  // Punkty z realnymi danymi, uzupełniane kolejno przez dostawców (bez interpolacji).
+  const merged = new Map<number, { point: RouteWeatherPoint; provider: WeatherProvider }>();
 
+  const absorb = (result: ProviderResult | null, provider: WeatherProvider): boolean => {
+    if (!result) return false;
+    result.points.forEach((point, i) => {
+      if (!merged.has(i) && completeFields(point)) merged.set(i, { point, provider });
+    });
+    return merged.size === samples.length;
+  };
+
+  const finish = (cacheable: boolean, notice: string | null) => {
+    const entries = [...merged.entries()].sort((a, b) => a[0] - b[0]).map(([, v]) => v);
+    const providers = [...new Set(entries.map((e) => e.provider))];
+    const value: RouteWeather = {
+      points: entries.map((e) => e.point),
+      notice,
+      provider: providers.length === 1 ? providers[0]! : (providers[0] ?? null),
+      ...(providers.length > 1 ? { providers } : {}),
+      ...(tried.length > 0 ? { fallbacksTried: tried } : {}),
+    };
+    audit("decision", {
+      decision: providers.join("+") || "all-failed",
+      points: value.points.length,
+      cacheable,
+      fallbacksTried: tried,
+    });
+    return { value, cacheable };
+  };
+
+  // 1. Open-Meteo (główny).
   if (!options.skipOpenMeteo) {
+    tried.push("open-meteo");
     const outcome = await fetchOpenMeteo(samples, departure, input.minutes);
     if (outcome.ok) {
-      primary = mapOpenMeteo(samples, outcome.blocks, departure, input.minutes);
-      if (primary.complete) {
-        audit("decision", { decision: "open-meteo" });
-        return { value: { points: primary.points, notice: null }, cacheable: true };
-      }
+      const primary = mapOpenMeteo(samples, outcome.blocks, departure, input.minutes);
+      if (absorb(primary, "open-meteo")) return finish(true, null);
       primaryNotice = primary.notice;
     } else {
       primaryNotice = outcome.notice;
@@ -747,32 +1045,26 @@ async function computeRouteWeather(
     primaryNotice = RATE_LIMIT_NOTICE;
   }
 
-  // Fallback: Visual Crossing (klucz wyłącznie serwerowy).
-  const backup = await fetchVisualCrossing(samples, departure, input.minutes);
-  if (backup?.complete) {
-    audit("decision", { decision: "visual-crossing" });
-    return { value: { points: backup.points, notice: null }, cacheable: true };
-  }
-  if (backup) {
-    const partial = backup.points.filter((p) => p.temperature !== null);
-    if (partial.length > 0) {
-      // Częściowe pokrycie: pokazujemy wyłącznie punkty z realnymi danymi, bez cache.
-      audit("decision", { decision: "visual-crossing", partial: true, points: partial.length });
-      return {
-        value: { points: partial, notice: BOTH_FAILED_NOTICE },
-        cacheable: false,
-      };
-    }
-    audit("decision", { decision: "both-failed", reason: "visual-crossing-incomplete" });
-    return { value: { points: [], notice: BOTH_FAILED_NOTICE }, cacheable: false };
+  // 2. Visual Crossing, 3. WeatherAPI.com, 4. OpenWeather — sekwencyjnie, tylko po
+  // błędzie/timeoucie/niekompletnej odpowiedzi poprzedniego dostawcy.
+  const fallbacks: Array<{
+    provider: Exclude<WeatherProvider, "open-meteo">;
+    run: () => Promise<ProviderResult | null>;
+  }> = [
+    { provider: "visual-crossing", run: () => fetchVisualCrossing(samples, departure, input.minutes) },
+    { provider: "weatherapi", run: () => fetchWeatherApi(samples, departure, input.minutes) },
+    { provider: "openweather", run: () => fetchOpenWeather(samples, departure, input.minutes) },
+  ];
+
+  for (const fallback of fallbacks) {
+    const result = await fallback.run();
+    if (result === null) continue; // brak klucza → dostawca pomijany bez błędu
+    tried.push(fallback.provider);
+    if (absorb(result, fallback.provider)) return finish(true, null);
   }
 
-
-  // Brak zapasowego dostawcy — zachowaj dotychczasowe zachowanie Open-Meteo.
-  if (primary && primary.points.some((p) => p.temperature !== null)) {
-    audit("decision", { decision: "open-meteo", partial: true });
-    return { value: { points: primary.points, notice: primary.notice }, cacheable: false };
-  }
-  audit("decision", { decision: "both-failed", reason: "no-backup-provider" });
-  return { value: { points: [], notice: primaryNotice ?? BOTH_FAILED_NOTICE }, cacheable: false };
+  // Częściowe pokrycie: pokazujemy tylko punkty z realnymi danymi, bez cache.
+  if (merged.size > 0) return finish(false, BOTH_FAILED_NOTICE);
+  return finish(false, tried.length > 1 ? BOTH_FAILED_NOTICE : (primaryNotice ?? BOTH_FAILED_NOTICE));
 }
+

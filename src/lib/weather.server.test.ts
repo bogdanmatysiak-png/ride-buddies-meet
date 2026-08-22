@@ -459,7 +459,9 @@ describe("fallback Visual Crossing", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const res = await fetchRouteWeather(input);
-    expect(Object.keys(res).sort()).toEqual(["notice", "points"]);
+    expect(Object.keys(res).sort()).toEqual(["fallbacksTried", "notice", "points", "provider"]);
+    expect(res.provider).toBe("visual-crossing");
+
     expect(Object.keys(res.points[0]!).sort()).toEqual(
       [
         "at",
@@ -475,5 +477,183 @@ describe("fallback Visual Crossing", () => {
       ],
     );
     expect(JSON.stringify(res)).not.toContain(KEY);
+  });
+});
+
+describe("fallbacki WeatherAPI.com i OpenWeather", () => {
+  const VC = "vc-key";
+  const WAPI = "wapi-key";
+  const OW = "ow-key";
+
+  function wapiResponse(temp: number) {
+    return okResponse({
+      forecast: {
+        forecastday: [
+          {
+            hour: times.map((t, i) => ({
+              time_epoch: Math.floor(Date.parse(`${t}:00Z`) / 1000),
+              temp_c: temp + i,
+              cloud: 35,
+              wind_kph: 14,
+              gust_kph: 25,
+              precip_mm: 0.1,
+              chance_of_rain: 45,
+            })),
+          },
+        ],
+      },
+    });
+  }
+
+  function owResponse(temp: number) {
+    return okResponse({
+      list: times.map((t, i) => ({
+        dt: Math.floor(Date.parse(`${t}:00Z`) / 1000),
+        main: { temp: temp + i },
+        clouds: { all: 60 },
+        wind: { speed: 5, gust: 9 },
+        rain: { "3h": 0.4 },
+        pop: 0.35,
+      })),
+    });
+  }
+
+  const fail = (status: number) =>
+    ({ ok: false, status, json: async () => ({}) }) as unknown as Response;
+
+  beforeEach(() => {
+    __clearRouteWeatherCache();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-20T07:00:00Z"));
+  });
+  afterEach(() => {
+    delete process.env["VISUAL_CROSSING_API_KEY"];
+    delete process.env["WEATHERAPI_API_KEY"];
+    delete process.env["OPENWEATHER_API_KEY"];
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it("sukces Open-Meteo nie uruchamia żadnego fallbacku", async () => {
+    process.env["VISUAL_CROSSING_API_KEY"] = VC;
+    process.env["WEATHERAPI_API_KEY"] = WAPI;
+    process.env["OPENWEATHER_API_KEY"] = OW;
+    const fetchMock = vi.fn(async (_url: string) => okResponse([block(0), block(1), block(2)]));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await fetchRouteWeather(input);
+    expect(res.provider).toBe("open-meteo");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls.every((c) => String(c[0]).includes("open-meteo"))).toBe(true);
+  });
+
+  it("429 z Visual Crossing uruchamia WeatherAPI.com i ustawia cooldown VC", async () => {
+    process.env["VISUAL_CROSSING_API_KEY"] = VC;
+    process.env["WEATHERAPI_API_KEY"] = WAPI;
+    const fetchMock = vi.fn(async (url: string) => {
+      const u = String(url);
+      if (u.includes("open-meteo")) return fail(500);
+      if (u.includes("visualcrossing")) return fail(429);
+      return wapiResponse(18);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await fetchRouteWeather(input);
+    expect(res.provider).toBe("weatherapi");
+    expect(res.points).toHaveLength(3);
+    expect(res.points[0]!.cloudCover).toBe(35);
+    expect(res.fallbacksTried).toEqual(["open-meteo", "visual-crossing", "weatherapi"]);
+    expect(JSON.stringify(res)).not.toContain(WAPI);
+
+    // Cooldown VC: kolejna trasa nie pyta Visual Crossing.
+    fetchMock.mockClear();
+    await fetchRouteWeather({ ...input, minutes: 120 });
+    expect(fetchMock.mock.calls.some((c) => String(c[0]).includes("visualcrossing"))).toBe(false);
+  });
+
+  it("brak WEATHERAPI_API_KEY pomija WeatherAPI.com i przechodzi do OpenWeather", async () => {
+    process.env["OPENWEATHER_API_KEY"] = OW;
+    const fetchMock = vi.fn(async (url: string) =>
+      String(url).includes("open-meteo") ? fail(500) : owResponse(21),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await fetchRouteWeather(input);
+    expect(fetchMock.mock.calls.some((c) => String(c[0]).includes("weatherapi.com"))).toBe(false);
+    expect(res.provider).toBe("openweather");
+    expect(res.fallbacksTried).toEqual(["open-meteo", "openweather"]);
+  });
+
+  it("niepowodzenie WeatherAPI.com uruchamia OpenWeather", async () => {
+    process.env["WEATHERAPI_API_KEY"] = WAPI;
+    process.env["OPENWEATHER_API_KEY"] = OW;
+    const fetchMock = vi.fn(async (url: string) => {
+      const u = String(url);
+      if (u.includes("open-meteo")) return fail(500);
+      if (u.includes("weatherapi.com")) return fail(500);
+      return owResponse(21);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await fetchRouteWeather(input);
+    expect(res.provider).toBe("openweather");
+    expect(res.notice).toBeNull();
+  });
+
+  it("OpenWeather mapuje rekordy 3-godzinne na trzy punkty trasy", async () => {
+    process.env["OPENWEATHER_API_KEY"] = OW;
+    const fetchMock = vi.fn(async (url: string) =>
+      String(url).includes("open-meteo") ? fail(500) : owResponse(21),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await fetchRouteWeather(input);
+    const owCalls = fetchMock.mock.calls.filter((c) => String(c[0]).includes("openweathermap"));
+    expect(owCalls.length).toBe(3);
+    expect(owCalls.every((c) => String(c[0]).includes("/data/2.5/forecast"))).toBe(true);
+    expect(res.points.map((p) => p.label)).toEqual(["Początek", "Połowa trasy", "Cel"]);
+    expect(res.points.every((p) => p.temperature !== null)).toBe(true);
+    expect(res.points[0]!.windSpeed).toBeCloseTo(18, 3); // 5 m/s → km/h
+    expect(res.points[0]!.precipitationChance).toBe(35);
+    expect(JSON.stringify(res)).not.toContain(OW);
+  });
+
+  it("odpowiedź częściowa nie trafia do cache jako kompletna", async () => {
+    process.env["OPENWEATHER_API_KEY"] = OW;
+    let owCalls = 0;
+    const fetchMock = vi.fn(async (url: string) => {
+      if (String(url).includes("open-meteo")) return fail(500);
+      owCalls++;
+      return owCalls === 1 ? fail(500) : owResponse(21);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await fetchRouteWeather(input);
+    expect(res.points.length).toBe(2);
+    expect(res.notice).toBe("Nie udało się pobrać prognozy. Spróbuj ponownie za kilka minut.");
+
+    const before = fetchMock.mock.calls.length;
+    await fetchRouteWeather(input);
+    expect(fetchMock.mock.calls.length).toBeGreaterThan(before);
+  });
+
+  it("różne źródła dla różnych punktów zwracają listę providers", async () => {
+    process.env["WEATHERAPI_API_KEY"] = WAPI;
+    process.env["OPENWEATHER_API_KEY"] = OW;
+    let wapiCalls = 0;
+    const fetchMock = vi.fn(async (url: string) => {
+      const u = String(url);
+      if (u.includes("open-meteo")) return fail(500);
+      if (u.includes("weatherapi.com")) {
+        wapiCalls++;
+        return wapiCalls === 1 ? wapiResponse(18) : fail(500);
+      }
+      return owResponse(21);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await fetchRouteWeather(input);
+    expect(res.points).toHaveLength(3);
+    expect(res.providers).toEqual(["weatherapi", "openweather"]);
   });
 });
