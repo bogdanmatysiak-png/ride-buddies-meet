@@ -115,7 +115,9 @@ function localToUtc(date: string, time: string): number {
   return ts;
 }
 
-const LABELS = ["Start", "25% trasy", "Połowa trasy", "75% trasy", "Cel"];
+/** Dokładnie 3 prezentowane punkty trasy. */
+const MAX_POINTS = 3;
+
 
 const RATE_LIMIT_NOTICE = "Serwis pogodowy jest chwilowo obciążony. Spróbuj ponownie za kilka minut.";
 const RATE_LIMIT_STALE_NOTICE =
