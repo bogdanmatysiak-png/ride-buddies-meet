@@ -20,6 +20,8 @@ import { RideRatings } from "@/components/RideRatings";
 import { RideCountdown } from "@/components/RideCountdown";
 import { DistanceToStart } from "@/components/DistanceToStart";
 import { RouteWeather } from "@/components/RouteWeather";
+import { RiderInvite } from "@/components/RiderInvite";
+
 import { cameraSourcesText } from "@/lib/camera-sources";
 
 export const Route = createFileRoute("/wyprawa/$id")({
