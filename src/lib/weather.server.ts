@@ -16,11 +16,20 @@ export type RouteWeatherPoint = {
   precipitationChance: number | null;
 };
 
+export type WeatherProvider = "open-meteo" | "visual-crossing" | "weatherapi" | "openweather";
+
 export type RouteWeather = {
   points: RouteWeatherPoint[];
   /** Ostrzeżenie, gdy prognoza nie obejmuje daty wyjazdu. */
   notice: string | null;
+  /** Diagnostyka (bez danych tajnych): faktycznie użyte źródło danych. */
+  provider: WeatherProvider | null;
+  /** Wszystkie źródła użyte dla prezentowanych punktów (gdy więcej niż jedno). */
+  providers?: WeatherProvider[];
+  /** Dostawcy wypróbowani przed sukcesem (kolejność prób). */
+  fallbacksTried?: WeatherProvider[];
 };
+
 
 function haversine(a: [number, number], b: [number, number]): number {
   const toRad = (v: number) => (v * Math.PI) / 180;
