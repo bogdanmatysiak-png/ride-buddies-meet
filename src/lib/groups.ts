@@ -328,3 +328,92 @@ export async function fetchGroupById(
     members,
   };
 }
+
+/* ------------------------------------------------------------------ *
+ * Zaproszenia do ekipy z sekcji „Kto jedzie” (wyprawa)
+ * Baza pilnuje uprawnień: INSERT do group_members przechodzi tylko,
+ * gdy auth.uid() jest właścicielem grupy i invited_by = auth.uid(),
+ * a UNIQUE (group_id, user_id) blokuje duplikaty zaproszeń.
+ * ------------------------------------------------------------------ */
+
+export type InviteTargetState = "available" | "pending" | "member";
+
+export type InviteTarget = {
+  groupId: string;
+  groupName: string;
+  state: InviteTargetState;
+};
+
+export const inviteTargetsQueryKey = ["group-invite-targets"] as const;
+
+/** Czysta logika: co można zrobić z daną osobą w moich ekipach. */
+export function buildInviteTargets(
+  ownedGroups: { id: string; name: string }[],
+  memberships: { group_id: string; user_id: string; status: "pending" | "accepted" }[],
+  inviterId: string,
+  inviteeId: string,
+): InviteTarget[] {
+  if (!inviterId || inviterId === inviteeId) return [];
+  const byGroup = new Map(
+    memberships.filter((m) => m.user_id === inviteeId).map((m) => [m.group_id, m.status]),
+  );
+  return ownedGroups
+    .map((g) => {
+      const status = byGroup.get(g.id);
+      return {
+        groupId: g.id,
+        groupName: g.name,
+        state: (status === "accepted"
+          ? "member"
+          : status === "pending"
+            ? "pending"
+            : "available") as InviteTargetState,
+      };
+    })
+    .sort((a, b) => a.groupName.localeCompare(b.groupName, "pl"));
+}
+
+/** Ekipy, których jestem właścicielem, wraz ze stanem danej osoby w każdej z nich. */
+export async function fetchInviteTargets(
+  inviterId: string,
+  inviteeId: string,
+): Promise<InviteTarget[]> {
+  if (!inviterId || inviterId === inviteeId) return [];
+  const { data: owned, error } = await supabase
+    .from("groups")
+    .select("id, name")
+    .eq("owner_id", inviterId);
+  if (error) throw error;
+  const groups = owned ?? [];
+  if (groups.length === 0) return [];
+  const { data: memberships, error: memberError } = await supabase
+    .from("group_members")
+    .select("group_id, user_id, status")
+    .eq("user_id", inviteeId)
+    .in(
+      "group_id",
+      groups.map((g) => g.id),
+    );
+  if (memberError) throw memberError;
+  return buildInviteTargets(groups, memberships ?? [], inviterId, inviteeId);
+}
+
+/** Wysłanie jednego zaproszenia do ekipy (rola zawsze „member”). */
+export async function inviteToTeam(groupId: string, inviteeId: string, inviterId: string) {
+  if (!inviterId) throw new Error("Musisz być zalogowany, żeby zaprosić do ekipy");
+  if (inviterId === inviteeId) throw new Error("Nie zaprosisz samego siebie");
+  const { error } = await supabase.from("group_members").insert({
+    group_id: groupId,
+    user_id: inviteeId,
+    status: "pending",
+    invited_by: inviterId,
+    role: "member",
+  });
+  if (error) {
+    if (error.code === "23505" || error.code === "23000" || error.message.includes("duplicate")) {
+      throw new Error("Ta osoba już należy do ekipy albo ma aktywne zaproszenie");
+    }
+    if (error.code === "42501") throw new Error("Tylko właściciel ekipy może zapraszać");
+    throw error;
+  }
+}
