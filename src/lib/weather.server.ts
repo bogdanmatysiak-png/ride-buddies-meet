@@ -166,6 +166,11 @@ function scheduleRefresh(
 
 type HourlyBlock = Record<string, Array<number | null> | string[] | undefined>;
 
+/** Tymczasowe logi diagnostyczne (bez kluczy, URL-i i danych użytkowników). */
+function audit(event: string, details: Record<string, unknown> = {}) {
+  console.log("[weather-audit]", JSON.stringify({ event, ...details }));
+}
+
 async function fetchWithTimeout(url: string): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -200,6 +205,7 @@ export async function fetchRouteWeather(input: {
 
   if (usableStale) {
     if (!cooling) scheduleRefresh(key, input, decoded, departure);
+    audit("decision", { decision: "stale-cache", cooling, ageMinutes: Math.round(age / 60000) });
     return {
       points: usableStale.value.points,
       notice: cooling ? RATE_LIMIT_STALE_NOTICE : STALE_NOTICE,
@@ -287,6 +293,12 @@ async function fetchOpenMeteo(samples: Sample[]): Promise<OpenMeteoOutcome> {
     const res = await fetchWithTimeout(url);
     if (!res.ok) {
       if (res.status === 429) cooldownUntil = Date.now() + COOLDOWN_MS;
+      audit("open-meteo", {
+        status: res.status,
+        timeout: false,
+        rejectReason: res.status === 429 ? "rate-limited" : "http-error",
+        samples: samples.length,
+      });
       return {
         ok: false,
         rateLimited: res.status === 429,
@@ -298,8 +310,24 @@ async function fetchOpenMeteo(samples: Sample[]): Promise<OpenMeteoOutcome> {
     }
     const json = (await res.json()) as { hourly?: HourlyBlock } | Array<{ hourly?: HourlyBlock }>;
     const list = Array.isArray(json) ? json : [json];
-    return { ok: true, blocks: list.map((entry) => entry?.hourly ?? {}) };
-  } catch {
+    const blocks = list.map((entry) => entry?.hourly ?? {});
+    audit("open-meteo", {
+      status: res.status,
+      timeout: false,
+      blocks: blocks.length,
+      hours: blocks.map((b) => ((b["time"] as string[] | undefined) ?? []).length),
+      samples: samples.length,
+      rejectReason: null,
+    });
+    return { ok: true, blocks };
+  } catch (e) {
+    const timeout = e instanceof Error && e.name === "AbortError";
+    audit("open-meteo", {
+      status: null,
+      timeout,
+      rejectReason: timeout ? "timeout" : "network-error",
+      samples: samples.length,
+    });
     return { ok: false, rateLimited: false, notice: "Serwis pogodowy chwilowo niedostępny" };
   }
 }
@@ -331,29 +359,46 @@ function mapOpenMeteo(
         notice = "Prognoza jest dostępna maksymalnie 16 dni w przód";
       }
     }
-    const val = (key: string) => {
-      if (idx < 0) return null;
+    const missing: string[] = [];
+    const val = (key: string, auditName: string) => {
+      if (idx < 0) {
+        missing.push(auditName);
+        return null;
+      }
       const value = (hourly[key] as Array<number | null> | undefined)?.[idx];
       if (typeof value !== "number") {
         complete = false;
+        missing.push(auditName);
         notice =
           notice ?? "Serwis pogodowy zwrócił niepełne dane — część wartości może być nieznana";
         return null;
       }
       return value;
     };
-    return {
+    const mapped = {
       label,
       lat: sample.point[0],
       lng: sample.point[1],
       at: at.toISOString(),
-      temperature: val("temperature_2m"),
-      cloudCover: val("cloud_cover"),
-      windSpeed: val("wind_speed_10m"),
-      windGusts: val("wind_gusts_10m"),
-      precipitation: val("precipitation"),
-      precipitationChance: val("precipitation_probability"),
+      temperature: val("temperature_2m", "temp"),
+      cloudCover: val("cloud_cover", "cloudcover"),
+      windSpeed: val("wind_speed_10m", "windspeed"),
+      windGusts: val("wind_gusts_10m", "windgust"),
+      precipitation: val("precipitation", "precip"),
+      precipitationChance: val("precipitation_probability", "precipprob"),
     } satisfies RouteWeatherPoint;
+    if (missing.length > 0 || idx < 0) {
+      audit("open-meteo-point", {
+        label,
+        matched: idx >= 0,
+        diffMinutes:
+          idx >= 0 && times[idx]
+            ? Math.round((Date.parse(`${times[idx]}Z`) - at.getTime()) / 60000)
+            : null,
+        missingFields: missing,
+      });
+    }
+    return mapped;
   });
   return { points, complete, notice };
 }
@@ -400,10 +445,15 @@ async function fetchVisualCrossing(
   minutes: number,
 ): Promise<ProviderResult | null> {
   const key = process.env["VISUAL_CROSSING_API_KEY"];
+  audit("visual-crossing-start", {
+    hasVisualCrossingKey: !!key,
+    routePoints: samples.length,
+  });
   if (!key) return null;
 
   let complete = true;
   let notice: string | null = null;
+
 
   const points = await mapWithLimit(samples, VC_CONCURRENCY, async (sample) => {
     const { at, label } = pointAt(sample, departure, minutes);
@@ -418,45 +468,85 @@ async function fetchVisualCrossing(
       const res = await fetchWithTimeout(url);
       if (!res.ok) {
         complete = false;
+        audit("visual-crossing-point", {
+          label,
+          status: res.status,
+          timeout: false,
+          rejectReason: "http-error",
+        });
         return emptyPoint(sample, departure, minutes);
       }
       const json = (await res.json()) as { days?: Array<{ hours?: VcHour[] }> };
-      const hours = (json.days ?? []).flatMap((d) => d.hours ?? []);
+      const days = json.days ?? [];
+      const hours = days.flatMap((d) => d.hours ?? []);
       const idx = nearestIndex(
         hours.map((h) => (typeof h.datetimeEpoch === "number" ? h.datetimeEpoch * 1000 : NaN)),
         at.getTime(),
       );
       if (idx < 0) {
         complete = false;
+        audit("visual-crossing-point", {
+          label,
+          status: res.status,
+          timeout: false,
+          days: days.length,
+          hours: hours.length,
+          rejectReason: "no-hour-match",
+          missingFields: ["temp", "cloudcover", "windspeed", "windgust", "precip", "precipprob"],
+        });
         return emptyPoint(sample, departure, minutes);
       }
       const hour = hours[idx]!;
-      const num = (value: number | null | undefined) => {
+      const missing: string[] = [];
+      const num = (value: number | null | undefined, auditName: string) => {
         if (typeof value !== "number") {
           complete = false;
+          missing.push(auditName);
           return null;
         }
         return value;
       };
-      return {
+      const mapped = {
         label,
         lat: sample.point[0],
         lng: sample.point[1],
         at: at.toISOString(),
-        temperature: num(hour.temp),
-        cloudCover: num(hour.cloudcover),
-        windSpeed: num(hour.windspeed),
-        windGusts: num(hour.windgust),
-        precipitation: num(hour.precip),
-        precipitationChance: num(hour.precipprob),
+        temperature: num(hour.temp, "temp"),
+        cloudCover: num(hour.cloudcover, "cloudcover"),
+        windSpeed: num(hour.windspeed, "windspeed"),
+        windGusts: num(hour.windgust, "windgust"),
+        precipitation: num(hour.precip, "precip"),
+        precipitationChance: num(hour.precipprob, "precipprob"),
       } satisfies RouteWeatherPoint;
-    } catch {
+      audit("visual-crossing-point", {
+        label,
+        status: res.status,
+        timeout: false,
+        days: days.length,
+        hours: hours.length,
+        diffMinutes:
+          typeof hour.datetimeEpoch === "number"
+            ? Math.round((hour.datetimeEpoch * 1000 - at.getTime()) / 60000)
+            : null,
+        missingFields: missing,
+        rejectReason: missing.length > 0 ? "missing-fields" : null,
+      });
+      return mapped;
+    } catch (e) {
       complete = false;
+      const timeout = e instanceof Error && e.name === "AbortError";
+      audit("visual-crossing-point", {
+        label,
+        status: null,
+        timeout,
+        rejectReason: timeout ? "timeout" : "network-error",
+      });
       return emptyPoint(sample, departure, minutes);
     }
   });
 
   if (!complete) notice = BOTH_FAILED_NOTICE;
+  audit("visual-crossing", { complete, routePoints: points.length });
   return { points, complete, notice };
 }
 
@@ -467,6 +557,11 @@ async function computeRouteWeather(
   options: { skipOpenMeteo?: boolean } = {},
 ): Promise<{ value: RouteWeather; cacheable: boolean }> {
   const samples = pickAlong(decoded, Math.min(5, Math.max(2, decoded.length)));
+  audit("start", {
+    hasVisualCrossingKey: !!process.env["VISUAL_CROSSING_API_KEY"],
+    routePoints: samples.length,
+    skipOpenMeteo: !!options.skipOpenMeteo,
+  });
 
   let primary: ProviderResult | null = null;
   let primaryNotice: string | null = null;
@@ -475,7 +570,10 @@ async function computeRouteWeather(
     const outcome = await fetchOpenMeteo(samples);
     if (outcome.ok) {
       primary = mapOpenMeteo(samples, outcome.blocks, departure, input.minutes);
-      if (primary.complete) return { value: { points: primary.points, notice: null }, cacheable: true };
+      if (primary.complete) {
+        audit("decision", { decision: "open-meteo" });
+        return { value: { points: primary.points, notice: null }, cacheable: true };
+      }
       primaryNotice = primary.notice;
     } else {
       primaryNotice = outcome.notice;
@@ -487,15 +585,19 @@ async function computeRouteWeather(
   // Fallback: Visual Crossing (klucz wyłącznie serwerowy).
   const backup = await fetchVisualCrossing(samples, departure, input.minutes);
   if (backup?.complete) {
+    audit("decision", { decision: "visual-crossing" });
     return { value: { points: backup.points, notice: null }, cacheable: true };
   }
   if (backup) {
+    audit("decision", { decision: "both-failed", reason: "visual-crossing-incomplete" });
     return { value: { points: [], notice: BOTH_FAILED_NOTICE }, cacheable: false };
   }
 
   // Brak zapasowego dostawcy — zachowaj dotychczasowe zachowanie Open-Meteo.
   if (primary && primary.points.some((p) => p.temperature !== null)) {
+    audit("decision", { decision: "open-meteo", partial: true });
     return { value: { points: primary.points, notice: primary.notice }, cacheable: false };
   }
+  audit("decision", { decision: "both-failed", reason: "no-backup-provider" });
   return { value: { points: [], notice: primaryNotice ?? BOTH_FAILED_NOTICE }, cacheable: false };
 }
