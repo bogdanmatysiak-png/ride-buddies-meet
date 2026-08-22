@@ -103,8 +103,12 @@ const BOTH_FAILED_NOTICE = "Nie udało się pobrać prognozy. Spróbuj ponownie 
 
 /** Limit czasu jednego żądania do dostawcy prognozy. */
 const REQUEST_TIMEOUT_MS = 8000;
-/** Maksymalna liczba równoległych żądań do Visual Crossing. */
-const VC_CONCURRENCY = 2;
+/** Maksymalna liczba równoległych żądań do Visual Crossing (sekwencyjnie). */
+const VC_CONCURRENCY = 1;
+/** Maksymalna liczba punktów trasy pobieranych z Visual Crossing. */
+const VC_MAX_POINTS = 3;
+/** Globalny cooldown po HTTP 429 z Visual Crossing. */
+const VC_COOLDOWN_MS = 600000;
 /** Tolerancja dopasowania godziny prognozy do czasu punktu trasy. */
 const MATCH_TOLERANCE_MS = 3600000;
 
@@ -116,7 +120,9 @@ const COOLDOWN_MS = 300000;
 const CACHE_MAX_ENTRIES = 50;
 const cache = new Map<string, { storedAt: number; value: RouteWeather }>();
 let cooldownUntil = 0;
+let vcCooldownUntil = 0;
 const inflight = new Map<string, Promise<void>>();
+
 
 function cacheKey(input: { encodedPolyline: string; date: string; time: string; minutes: number }) {
   return `${input.date}|${input.time}|${Math.round(input.minutes)}|${input.encodedPolyline}`;
