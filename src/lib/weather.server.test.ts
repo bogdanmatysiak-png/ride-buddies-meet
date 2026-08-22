@@ -399,13 +399,14 @@ describe("fallback Visual Crossing", () => {
   });
 
   it("brakujące punkty fallbacku pozostają puste (bez interpolacji)", async () => {
+    let vcCalls = 0;
     const fetchMock = vi.fn(async (url: string) => {
-      const u = String(url);
-      if (u.includes("open-meteo")) {
+      if (String(url).includes("open-meteo")) {
         return { ok: false, status: 500, json: async () => ({}) } as unknown as Response;
       }
+      vcCalls++;
       // Pierwszy punkt zawodzi → nie wolno skopiować danych z innego punktu.
-      if (u.includes(`${(52.158).toFixed(4)}`) || fetchMock.mock.calls.length <= 2) {
+      if (vcCalls === 1) {
         return { ok: false, status: 500, json: async () => ({}) } as unknown as Response;
       }
       return vcResponse(20);
@@ -413,11 +414,13 @@ describe("fallback Visual Crossing", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const res = await fetchRouteWeather(input);
+    expect(res.points).toEqual([]); // niekompletny wynik → czytelny komunikat, bez danych
+    expect(res.notice).toBe("Nie udało się pobrać prognozy. Spróbuj ponownie za kilka minut.");
+
     // Niekompletny wynik nie jest cache'owany.
     const before = fetchMock.mock.calls.length;
     await fetchRouteWeather(input);
     expect(fetchMock.mock.calls.length).toBeGreaterThan(before);
-    expect(res.points.every((p) => p.temperature === null || typeof p.temperature === "number")).toBe(true);
   });
 
   it("publiczny kształt danych pozostaje zgodny z UI", async () => {
