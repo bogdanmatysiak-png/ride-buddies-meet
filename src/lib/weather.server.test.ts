@@ -165,7 +165,39 @@ describe("fetchRouteWeather", () => {
     await fetchRouteWeather(input);
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
+
+  it("ogranicza zakres dat do minimum dla krótkiej trasy", async () => {
+    const fetchMock = vi.fn(async (_url: string) => okResponse([block(0), block(0), block(0)]));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await fetchRouteWeather(input); // 11:00 lokalnie = 09:00 UTC, 60 min trasy
+    const url = String(fetchMock.mock.calls[0]![0]);
+    expect(url).not.toContain("forecast_days");
+    expect(url).toContain("start_date=2026-08-22");
+    expect(url).toContain("end_date=2026-08-22");
+  });
+
+  it("trasa przez północ ustawia zakres dwóch dat", async () => {
+    const fetchMock = vi.fn(async (_url: string) => okResponse([block(0), block(0), block(0)]));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await fetchRouteWeather({ ...input, time: "23:00", minutes: 90 });
+    const url = String(fetchMock.mock.calls[0]![0]);
+    expect(url).toContain("start_date=2026-08-22");
+    expect(url).toContain("end_date=2026-08-23");
+  });
+
+  it("dopasowuje godzinę w czasie letnim Europe/Warsaw (UTC+2)", async () => {
+    const fetchMock = vi.fn(async () => okResponse([block(0), block(0), block(0)]));
+    vi.stubGlobal("fetch", fetchMock);
+
+    // 11:00 czasu warszawskiego (DST) = 09:00 UTC → pierwsza godzina bloku (15°C).
+    const res = await fetchRouteWeather(input);
+    expect(res.points[0]!.at).toBe("2026-08-22T09:00:00.000Z");
+    expect(res.points[0]!.temperature).toBe(15);
+  });
 });
+
 
 describe("fallback Visual Crossing", () => {
   const KEY = "test-secret-key";
@@ -329,5 +361,92 @@ describe("fallback Visual Crossing", () => {
     expect(res.notice).toBeNull();
     expect(res.points.every((p) => p.temperature !== null)).toBe(true);
   });
-});
+  it("fallback pyta o minimalny zakres godzin, nie o całą dobę", async () => {
+    const fetchMock = vi.fn(async (url: string) =>
+      String(url).includes("open-meteo")
+        ? ({ ok: false, status: 500, json: async () => ({}) } as unknown as Response)
+        : vcResponse(20),
+    );
+    vi.stubGlobal("fetch", fetchMock);
 
+    await fetchRouteWeather(input);
+    const vcUrl = String(
+      fetchMock.mock.calls.map((c) => String(c[0])).find((u) => u.includes("visualcrossing"))!,
+    );
+    // 11:00 lokalnie ±1 h → zakres 10:00–12:00 tego samego dnia.
+    expect(vcUrl).toContain("/2026-08-22T10:00:00/2026-08-22T12:00:00");
+    expect(vcUrl).toContain("include=hours");
+    expect(vcUrl).not.toContain(`/2026-08-22/2026-08-22?`);
+  });
+
+  it("fallback wykonuje jedno zapytanie naraz", async () => {
+    let active = 0;
+    let maxActive = 0;
+    const fetchMock = vi.fn(async (url: string) => {
+      if (String(url).includes("open-meteo")) {
+        return { ok: false, status: 500, json: async () => ({}) } as unknown as Response;
+      }
+      active++;
+      maxActive = Math.max(maxActive, active);
+      await Promise.resolve();
+      active--;
+      return vcResponse(20);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await fetchRouteWeather(input);
+    expect(maxActive).toBe(1);
+  });
+
+  it("brakujące punkty fallbacku pozostają puste (bez interpolacji)", async () => {
+    let vcCalls = 0;
+    const fetchMock = vi.fn(async (url: string) => {
+      if (String(url).includes("open-meteo")) {
+        return { ok: false, status: 500, json: async () => ({}) } as unknown as Response;
+      }
+      vcCalls++;
+      // Pierwszy punkt zawodzi → nie wolno skopiować danych z innego punktu.
+      if (vcCalls === 1) {
+        return { ok: false, status: 500, json: async () => ({}) } as unknown as Response;
+      }
+      return vcResponse(20);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await fetchRouteWeather(input);
+    expect(res.points).toEqual([]); // niekompletny wynik → czytelny komunikat, bez danych
+    expect(res.notice).toBe("Nie udało się pobrać prognozy. Spróbuj ponownie za kilka minut.");
+
+    // Niekompletny wynik nie jest cache'owany.
+    const before = fetchMock.mock.calls.length;
+    await fetchRouteWeather(input);
+    expect(fetchMock.mock.calls.length).toBeGreaterThan(before);
+  });
+
+  it("publiczny kształt danych pozostaje zgodny z UI", async () => {
+    const fetchMock = vi.fn(async (url: string) =>
+      String(url).includes("open-meteo")
+        ? ({ ok: false, status: 500, json: async () => ({}) } as unknown as Response)
+        : vcResponse(20),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await fetchRouteWeather(input);
+    expect(Object.keys(res).sort()).toEqual(["notice", "points"]);
+    expect(Object.keys(res.points[0]!).sort()).toEqual(
+      [
+        "at",
+        "cloudCover",
+        "label",
+        "lat",
+        "lng",
+        "precipitation",
+        "precipitationChance",
+        "temperature",
+        "windGusts",
+        "windSpeed",
+      ],
+    );
+    expect(JSON.stringify(res)).not.toContain(KEY);
+  });
+});

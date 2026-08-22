@@ -291,12 +291,53 @@ type OpenMeteoOutcome =
   | { ok: true; blocks: HourlyBlock[] }
   | { ok: false; rateLimited: boolean; notice: string };
 
-async function fetchOpenMeteo(samples: Sample[]): Promise<OpenMeteoOutcome> {
+/** Bufor bezpieczeństwa (1 h) przed pierwszym i po ostatnim punkcie trasy. */
+const WINDOW_BUFFER_MS = 3600000;
+/** Horyzont prognozy Open-Meteo. */
+const FORECAST_HORIZON_MS = 16 * 86400000;
+
+/** Zakres czasu potrzebny dla punktów trasy (z buforem 1 h). */
+function routeWindow(
+  samples: Sample[],
+  departure: Date,
+  minutes: number,
+): { from: number; to: number } {
+  const stamps = samples.map((s) => pointAt(s, departure, minutes).at.getTime());
+  return {
+    from: Math.min(...stamps) - WINDOW_BUFFER_MS,
+    to: Math.max(...stamps) + WINDOW_BUFFER_MS,
+  };
+}
+
+/** Data UTC (YYYY-MM-DD). */
+function utcDate(ts: number): string {
+  return new Date(ts).toISOString().slice(0, 10);
+}
+
+async function fetchOpenMeteo(
+  samples: Sample[],
+  departure: Date,
+  minutes: number,
+): Promise<OpenMeteoOutcome> {
+  const window = routeWindow(samples, departure, minutes);
+  if (window.from > Date.now() + FORECAST_HORIZON_MS) {
+    audit("open-meteo", { status: null, timeout: false, rejectReason: "beyond-horizon" });
+    return {
+      ok: false,
+      rateLimited: false,
+      notice: "Prognoza jest dostępna maksymalnie 16 dni w przód",
+    };
+  }
+  // Minimalny zakres dat: od daty UTC początku okna do lokalnej daty (Europe/Warsaw)
+  // końca okna — pokrywa granicę dni i zmianę czasu przy mapowaniu w UTC.
+  const startDate = utcDate(window.from);
+  const endDate = localDate(window.to);
   const url =
     `https://api.open-meteo.com/v1/forecast?latitude=${samples.map((s) => s.point[0].toFixed(4)).join(",")}` +
     `&longitude=${samples.map((s) => s.point[1].toFixed(4)).join(",")}` +
     `&hourly=temperature_2m,cloud_cover,wind_speed_10m,wind_gusts_10m,precipitation,precipitation_probability` +
-    `&forecast_days=16&timezone=UTC`;
+    `&start_date=${startDate}&end_date=${endDate}&timezone=UTC`;
+
   try {
     const res = await fetchWithTimeout(url);
     if (!res.ok) {
@@ -418,6 +459,14 @@ function localDate(ts: number): string {
   return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
 }
 
+/** Lokalny czas (Europe/Warsaw) w formacie YYYY-MM-DDTHH:00:00 (pełna godzina). */
+function localDateTime(ts: number): string {
+  const d = new Date(ts + tzOffsetMs(ts));
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${localDate(ts)}T${pad(d.getUTCHours())}:00:00`;
+}
+
+
 type VcHour = {
   datetimeEpoch?: number;
   temp?: number | null;
@@ -510,13 +559,17 @@ async function fetchVisualCrossing(
       });
       return;
     }
-    const day = localDate(at.getTime());
+    // Minimalny zakres: godzina przed i po czasie punktu (Timeline API przyjmuje
+    // zakres ISO datetime w lokalnej strefie lokalizacji) — 3 godziny zamiast całej doby.
+    const from = localDateTime(at.getTime() - WINDOW_BUFFER_MS);
+    const to = localDateTime(at.getTime() + WINDOW_BUFFER_MS);
     const url =
       `https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/` +
-      `${sample.point[0].toFixed(4)},${sample.point[1].toFixed(4)}/${day}/${day}` +
+      `${sample.point[0].toFixed(4)},${sample.point[1].toFixed(4)}/${from}/${to}` +
       `?unitGroup=metric&include=hours&contentType=json` +
       `&elements=datetimeEpoch,temp,cloudcover,windspeed,windgust,precip,precipprob` +
       `&key=${encodeURIComponent(key)}`;
+
     try {
       requests++;
       const res = await fetchWithTimeout(url);
@@ -606,25 +659,17 @@ async function fetchVisualCrossing(
     }
   });
 
-  // Punkty nieobjęte zapytaniem uzupełniamy wartościami najbliższego pobranego punktu.
+  // Punktów nieobjętych zapytaniem nie interpolujemy — brak danych to jawne null.
   const points = samples.map((sample, i) => {
     const own = fetched.get(i);
-    const base = own ?? nearestFetched(fetched, i);
-    if (!base) return emptyPoint(sample, departure, minutes);
-    const { at, label } = pointAt(sample, departure, minutes);
-    return {
-      ...base,
-      label,
-      lat: sample.point[0],
-      lng: sample.point[1],
-      at: at.toISOString(),
-    } satisfies RouteWeatherPoint;
+    return own ?? emptyPoint(sample, departure, minutes);
   });
 
   if (!complete) notice = BOTH_FAILED_NOTICE;
   audit("visual-crossing", {
     complete,
     routePoints: points.length,
+    fetchedPoints: fetched.size,
     requests,
     rateLimited,
     skippedByCooldown: false,
@@ -633,22 +678,6 @@ async function fetchVisualCrossing(
   return { points, complete, notice };
 }
 
-/** Najbliższy (po indeksie) pobrany punkt prognozy. */
-function nearestFetched(
-  fetched: Map<number, RouteWeatherPoint>,
-  index: number,
-): RouteWeatherPoint | null {
-  let best: RouteWeatherPoint | null = null;
-  let bestDiff = Infinity;
-  for (const [i, point] of fetched) {
-    const diff = Math.abs(i - index);
-    if (diff < bestDiff) {
-      bestDiff = diff;
-      best = point;
-    }
-  }
-  return best;
-}
 
 
 async function computeRouteWeather(
@@ -668,7 +697,7 @@ async function computeRouteWeather(
   let primaryNotice: string | null = null;
 
   if (!options.skipOpenMeteo) {
-    const outcome = await fetchOpenMeteo(samples);
+    const outcome = await fetchOpenMeteo(samples, departure, input.minutes);
     if (outcome.ok) {
       primary = mapOpenMeteo(samples, outcome.blocks, departure, input.minutes);
       if (primary.complete) {
