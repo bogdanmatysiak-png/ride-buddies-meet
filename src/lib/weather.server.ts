@@ -459,6 +459,14 @@ function localDate(ts: number): string {
   return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
 }
 
+/** Lokalny czas (Europe/Warsaw) w formacie YYYY-MM-DDTHH:00:00 (pełna godzina). */
+function localDateTime(ts: number): string {
+  const d = new Date(ts + tzOffsetMs(ts));
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${localDate(ts)}T${pad(d.getUTCHours())}:00:00`;
+}
+
+
 type VcHour = {
   datetimeEpoch?: number;
   temp?: number | null;
