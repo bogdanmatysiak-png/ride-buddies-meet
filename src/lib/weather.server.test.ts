@@ -538,7 +538,7 @@ describe("fallbacki WeatherAPI.com i OpenWeather", () => {
     process.env["VISUAL_CROSSING_API_KEY"] = VC;
     process.env["WEATHERAPI_API_KEY"] = WAPI;
     process.env["OPENWEATHER_API_KEY"] = OW;
-    const fetchMock = vi.fn(async () => okResponse([block(0), block(1), block(2)]));
+    const fetchMock = vi.fn(async (_url: string) => okResponse([block(0), block(1), block(2)]));
     vi.stubGlobal("fetch", fetchMock);
 
     const res = await fetchRouteWeather(input);
