@@ -291,12 +291,53 @@ type OpenMeteoOutcome =
   | { ok: true; blocks: HourlyBlock[] }
   | { ok: false; rateLimited: boolean; notice: string };
 
-async function fetchOpenMeteo(samples: Sample[]): Promise<OpenMeteoOutcome> {
+/** Bufor bezpieczeństwa (1 h) przed pierwszym i po ostatnim punkcie trasy. */
+const WINDOW_BUFFER_MS = 3600000;
+/** Horyzont prognozy Open-Meteo. */
+const FORECAST_HORIZON_MS = 16 * 86400000;
+
+/** Zakres czasu potrzebny dla punktów trasy (z buforem 1 h). */
+function routeWindow(
+  samples: Sample[],
+  departure: Date,
+  minutes: number,
+): { from: number; to: number } {
+  const stamps = samples.map((s) => pointAt(s, departure, minutes).at.getTime());
+  return {
+    from: Math.min(...stamps) - WINDOW_BUFFER_MS,
+    to: Math.max(...stamps) + WINDOW_BUFFER_MS,
+  };
+}
+
+/** Data UTC (YYYY-MM-DD). */
+function utcDate(ts: number): string {
+  return new Date(ts).toISOString().slice(0, 10);
+}
+
+async function fetchOpenMeteo(
+  samples: Sample[],
+  departure: Date,
+  minutes: number,
+): Promise<OpenMeteoOutcome> {
+  const window = routeWindow(samples, departure, minutes);
+  if (window.from > Date.now() + FORECAST_HORIZON_MS) {
+    audit("open-meteo", { status: null, timeout: false, rejectReason: "beyond-horizon" });
+    return {
+      ok: false,
+      rateLimited: false,
+      notice: "Prognoza jest dostępna maksymalnie 16 dni w przód",
+    };
+  }
+  // Minimalny zakres dat: od daty UTC początku okna do lokalnej daty (Europe/Warsaw)
+  // końca okna — pokrywa granicę dni i zmianę czasu przy mapowaniu w UTC.
+  const startDate = utcDate(window.from);
+  const endDate = localDate(window.to);
   const url =
     `https://api.open-meteo.com/v1/forecast?latitude=${samples.map((s) => s.point[0].toFixed(4)).join(",")}` +
     `&longitude=${samples.map((s) => s.point[1].toFixed(4)).join(",")}` +
     `&hourly=temperature_2m,cloud_cover,wind_speed_10m,wind_gusts_10m,precipitation,precipitation_probability` +
-    `&forecast_days=16&timezone=UTC`;
+    `&start_date=${startDate}&end_date=${endDate}&timezone=UTC`;
+
   try {
     const res = await fetchWithTimeout(url);
     if (!res.ok) {
