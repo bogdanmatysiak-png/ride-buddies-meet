@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { geocodeAddresses } from "@/lib/geo.functions";
+import { useSession } from "@/hooks/useAuth";
 import {
   cacheKey,
   distanceKm,
@@ -15,6 +16,7 @@ import {
 
 export function useNearbyRides(addresses: string[]) {
   const geocode = useServerFn(geocodeAddresses);
+  const { session } = useSession();
   const [origin, setOrigin] = useState<Coords | null>(null);
   const [originLabel, setOriginLabel] = useState("");
   const [radius, setRadius] = useState<RadiusOption | null>(null);
@@ -34,7 +36,7 @@ export function useNearbyRides(addresses: string[]) {
   }, [origin, originLabel, radius]);
 
   const unique = Array.from(new Set(addresses.map((a) => a.trim()).filter(Boolean))).sort();
-  const enabled = Boolean(origin && radius) && unique.length > 0;
+  const enabled = Boolean(session) && Boolean(origin && radius) && unique.length > 0;
 
   const { data: points = {}, isFetching } = useQuery({
     queryKey: ["geocode", unique],
@@ -84,6 +86,10 @@ export function useNearbyRides(addresses: string[]) {
   const setOriginFromAddress = useCallback(
     async (address: string) => {
       setError(null);
+      if (!session) {
+        setError("Zaloguj się, aby szukać wypraw w okolicy");
+        return;
+      }
       const cached = readGeoCache()[cacheKey(address)];
       if (cached) {
         setOriginFromCoords(cached, address);
@@ -102,7 +108,7 @@ export function useNearbyRides(addresses: string[]) {
         setError(e instanceof Error ? e.message : "Nie udało się ustalić lokalizacji");
       }
     },
-    [geocode, setOriginFromCoords],
+    [geocode, session, setOriginFromCoords],
   );
 
   const clearOrigin = useCallback(() => {
