@@ -20,6 +20,8 @@ import { RideRatings } from "@/components/RideRatings";
 import { RideCountdown } from "@/components/RideCountdown";
 import { DistanceToStart } from "@/components/DistanceToStart";
 import { RouteWeather } from "@/components/RouteWeather";
+import { RiderInvite } from "@/components/RiderInvite";
+
 import { cameraSourcesText } from "@/lib/camera-sources";
 
 export const Route = createFileRoute("/wyprawa/$id")({
@@ -207,16 +209,15 @@ function RideDetail() {
         <ul className="mt-3 flex flex-wrap gap-2">
           {ride.riderIds.map((riderId, i) => (
             <li key={riderId}>
-              <Link
-                to="/motocyklista/$id"
-                params={{ id: riderId }}
-                className="inline-block rounded-full border border-border bg-secondary px-3 py-1 text-sm text-foreground transition-colors hover:border-primary hover:text-primary"
-              >
-                {ride.riders[i] ?? "Motocyklista"}
-              </Link>
+              <RiderInvite
+                riderId={riderId}
+                riderNick={ride.riders[i] ?? "Motocyklista"}
+                currentUserId={user?.id}
+              />
             </li>
           ))}
         </ul>
+
       </section>
 
       <RideRatings
